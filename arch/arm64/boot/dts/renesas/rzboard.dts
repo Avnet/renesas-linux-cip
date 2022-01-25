@@ -124,6 +124,12 @@
 		function = "scif0";
 	};
 
+	/* USB Channel 1 */
+	usb1_pins: usb1 {
+		groups = "usb1_d";
+		function = "usb1";
+	};
+
 	sdhi0_emmc_pins: sd0emmc {
 		sd0_emmc_data {
 			pins = "SD0_DATA0", "SD0_DATA1", "SD0_DATA2", "SD0_DATA3",
@@ -210,3 +216,18 @@
 	fixed-emmc-driver-type = <1>;
 	status = "okay";
 }; */
+
+&ehci1 {
+	status = "okay";
+};
+
+&ohci1 {
+	status = "okay";
+};
+
+&usb2_phy1 {
+	pinctrl-0 = <&usb1_pins>;
+	pinctrl-names = "default";
+
+	status = "okay";
+};
