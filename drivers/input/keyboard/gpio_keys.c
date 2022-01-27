@@ -569,8 +569,12 @@ static int gpio_keys_setup_key(struct platform_device *pdev,
 
 		INIT_DELAYED_WORK(&bdata->work, gpio_keys_gpio_work_func);
 
-		isr = gpio_keys_gpio_isr;
-		irqflags = IRQF_TRIGGER_RISING | IRQF_TRIGGER_FALLING;
+		/*  RZ/V2L don't support both falling-edge and rising-edge detect */
+		bdata->release_delay = button->debounce_interval;
+		timer_setup(&bdata->release_timer, gpio_keys_irq_timer, 0);
+
+		isr = gpio_keys_irq_isr;
+		irqflags = IRQF_TRIGGER_FALLING;
 
 		switch (button->wakeup_event_action) {
 		case EV_ACT_ASSERTED:
