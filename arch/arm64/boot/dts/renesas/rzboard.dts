@@ -239,11 +239,6 @@
 			pins = "SD1_CLK", "SD1_CMD";
 			power-source  = <3300>;
 		};
-
-		sd1_mux {
-			groups = "sdhi1_cd_b", "sdhi1_wp_b";
-			function = "sdhi1";
-		};
 	};
 
 	sdhi1_pins_uhs: sd1_uhs {
@@ -255,11 +250,6 @@
 		sd1_ctrl_uhs {
 			pins = "SD1_CLK", "SD1_CMD";
 			power-source  = <1800>;
-		};
-
-		sd1_mux_uhs {
-			groups = "sdhi1_cd_b", "sdhi1_wp_b";
-			function = "sdhi1";
 		};
 	};
 };
