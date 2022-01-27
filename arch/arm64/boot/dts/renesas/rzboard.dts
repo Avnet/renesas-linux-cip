@@ -10,6 +10,7 @@
 
 #include <dt-bindings/pinctrl/pinctrl-rzg2l.h>
 #include <dt-bindings/gpio/gpio.h>
+#include <dt-bindings/input/input.h>
 
 / {
 	model = "Avnet RzBoard (RZV2L Dual Cortex-A55)";
@@ -108,6 +109,17 @@
             gpios = <&pinctrl RZG2L_GPIO(19, 1) GPIO_ACTIVE_HIGH>;
             linux,default-trigger = "heartbeat";
             default-state = "on";
+        };
+    };
+
+    /* RZ/V2L don't support both falling-edge and rising-edge detect */
+    keys {
+        compatible = "gpio-keys";
+        userkey {
+            label = "S2";
+            linux,code = <KEY_1>;
+            debounce-interval = <20>;
+            gpios = <&pinctrl RZG2L_GPIO(39, 0) GPIO_ACTIVE_LOW>;
         };
     };
 };
