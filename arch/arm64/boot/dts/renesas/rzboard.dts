@@ -89,6 +89,11 @@
 		regulator-always-on;
 	};
 
+	wlan_pwrseq: wlan_pwrseq {
+		compatible = "mmc-pwrseq-simple";
+		reset-gpios = <&pinctrl RZG2L_GPIO(39, 2) GPIO_ACTIVE_LOW>;	 /* WLAN PMIC_EN */
+	};
+
 	x1_clk: x1-clock {
 		compatible = "fixed-clock";
 		#clock-cells = <0>;
@@ -223,6 +228,40 @@
 			function = "sdhi0";
 		};
 	};
+
+	sdhi1_pins: sd1 {
+		sd1_data {
+			pins = "SD1_DATA0", "SD1_DATA1", "SD1_DATA2", "SD1_DATA3";
+			power-source  = <3300>;
+		};
+
+		sd1_ctrl {
+			pins = "SD1_CLK", "SD1_CMD";
+			power-source  = <3300>;
+		};
+
+		sd1_mux {
+			groups = "sdhi1_cd_b", "sdhi1_wp_b";
+			function = "sdhi1";
+		};
+	};
+
+	sdhi1_pins_uhs: sd1_uhs {
+		sd1_data_uhs {
+			pins = "SD1_DATA0", "SD1_DATA1", "SD1_DATA2", "SD1_DATA3";
+			power-source  = <1800>;
+		};
+
+		sd1_ctrl_uhs {
+			pins = "SD1_CLK", "SD1_CMD";
+			power-source  = <1800>;
+		};
+
+		sd1_mux_uhs {
+			groups = "sdhi1_cd_b", "sdhi1_wp_b";
+			function = "sdhi1";
+		};
+	};
 };
 
 &scif0 {
@@ -263,6 +302,23 @@
 	fixed-emmc-driver-type = <1>;
 	status = "okay";
 }; */
+
+/*wifi*/
+&sdhi1 {
+       pinctrl-0 = <&sdhi1_pins>;
+       pinctrl-1 = <&sdhi1_pins_uhs>;
+       pinctrl-names = "default", "state_uhs";
+
+       vmmc-supply = <&reg_3p3v>;
+       max-frequency = <25000000>;
+       pm-ignore-notify;
+       keep-power-in-suspend;
+       non-removable;
+       cap-power-off-card;
+       bus-width = <4>;
+       mmc-pwrseq = <&wlan_pwrseq>;
+       status = "okay";
+};
 
 &ehci0 {
 	dr_mode = "otg";
