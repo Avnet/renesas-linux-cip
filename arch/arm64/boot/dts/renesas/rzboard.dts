@@ -165,6 +165,11 @@
 		function = "i2c3";
 	};
 
+	eth0_pins: eth0 {
+		groups = "eth0_link", "eth0_mdio", "eth0_rgmii";
+		function = "eth0";
+	};
+
 	scif0_pins: scif0 {
 		groups = "scif0_data";
 		function = "scif0";
@@ -346,4 +351,19 @@
 
 	vbus-supply = <&vbus0_5v>;
 	status = "okay";
+};
+
+&eth0 {
+	pinctrl-0 = <&eth0_pins>;
+	pinctrl-names = "default";
+	phy-handle = <&phy0>;
+	phy-mode = "rgmii-id";
+	status = "okay";
+
+	phy0: ethernet-phy@4 {
+		reg = <4>;
+		reset-gpios = <&pinctrl RZG2L_GPIO(4, 1) GPIO_ACTIVE_LOW>;
+		interrupt-parent = <&pinctrl>;
+		interrupts = <RZG2L_GPIO(1, 0) IRQ_TYPE_EDGE_FALLING>;
+	};
 };
