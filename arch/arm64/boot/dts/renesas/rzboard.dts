@@ -17,6 +17,7 @@
 	compatible = "avnet,rzboard", "renesas,r9a07g054l2";
 
 	aliases {
+		i2c0 = &i2c0;
 		serial0 = &scif0;
 	};
 
@@ -100,33 +101,67 @@
 		clock-frequency = <24000000>;
 	};
 
-    leds {
-        compatible = "gpio-leds";
-        ledred {
-            gpios = <&pinctrl RZG2L_GPIO(8, 1) GPIO_ACTIVE_HIGH>;
-            default-state = "off";
+        clk_ext_camera: clk_ext_camera {
+                compatible = "fixed-clock";
+                #clock-cells = <0>;
+                clock-frequency = <24000000>;
         };
-        ledgreen {
-            gpios = <&pinctrl RZG2L_GPIO(17, 2) GPIO_ACTIVE_HIGH>;
-            default-state = "off";
-        };
-        ledblue {
-            gpios = <&pinctrl RZG2L_GPIO(19, 1) GPIO_ACTIVE_HIGH>;
-            linux,default-trigger = "heartbeat";
-            default-state = "on";
-        };
-    };
 
-    /* RZ/V2L don't support both falling-edge and rising-edge detect */
-    keys {
-        compatible = "gpio-keys";
-        userkey {
-            label = "S2";
-            linux,code = <KEY_1>;
-            debounce-interval = <20>;
-            gpios = <&pinctrl RZG2L_GPIO(39, 0) GPIO_ACTIVE_LOW>;
+        ov5640_vdddo_1v8: 1p8v {
+                compatible = "regulator-fixed";
+                regulator-name = "camera_vdddo";
+                regulator-min-microvolt = <1800000>;
+                regulator-max-microvolt = <1800000>;
+                regulator-always-on;
         };
-    };
+
+        ov5640_vdda_2v8: 2p8v {
+                compatible = "regulator-fixed";
+                regulator-name = "camera_vdda";
+                regulator-min-microvolt = <2800000>;
+                regulator-max-microvolt = <2800000>;
+                regulator-always-on;
+        };
+
+        ov5640_vddd_1v5: 1p5v {
+                compatible = "regulator-fixed";
+                regulator-name = "camera_vddd";
+                regulator-min-microvolt = <1500000>;
+                regulator-max-microvolt = <1500000>;
+                regulator-always-on;
+        };
+
+	leds {
+		compatible = "gpio-leds";
+
+		ledred {
+			gpios = <&pinctrl RZG2L_GPIO(8, 1) GPIO_ACTIVE_HIGH>;
+			default-state = "off";
+		};
+
+		ledgreen {
+			gpios = <&pinctrl RZG2L_GPIO(17, 2) GPIO_ACTIVE_HIGH>;
+			default-state = "off";
+		};
+
+		ledblue {
+			gpios = <&pinctrl RZG2L_GPIO(19, 1) GPIO_ACTIVE_HIGH>;
+			linux,default-trigger = "heartbeat";
+			default-state = "on";
+		};
+	};
+
+	/* RZ/V2L don't support both falling-edge and rising-edge detect */
+	keys {
+		compatible = "gpio-keys";
+
+		userkey {
+			label = "S2";
+			linux,code = <KEY_1>;
+			debounce-interval = <20>;
+			gpios = <&pinctrl RZG2L_GPIO(39, 0) GPIO_ACTIVE_LOW>;
+		};
+	};
 };
 
 &xinclk {
@@ -169,6 +204,11 @@
 		groups = "eth0_link", "eth0_mdio", "eth0_rgmii";
 		function = "eth0";
 	};
+
+        i2c0_pins: i2c0 {
+                pins = "RIIC0_SDA", "RIIC0_SCL";
+                input-enable;
+        };
 
 	scif0_pins: scif0 {
 		groups = "scif0_data";
@@ -366,4 +406,54 @@
 		interrupt-parent = <&pinctrl>;
 		interrupts = <RZG2L_GPIO(1, 0) IRQ_TYPE_EDGE_FALLING>;
 	};
+};
+
+&i2c0 {
+        pinctrl-0 = <&i2c0_pins>;
+        pinctrl-names = "default";
+
+        clock-frequency = <100000>;
+        status = "okay";
+
+        ov5640: camera@3c {
+                compatible = "ovti,ov5640";
+                reg = <0x3c>;
+		status = "okay";
+
+                clock-names = "xclk";
+                clocks = <&clk_ext_camera>;
+                clock-frequency = <24000000>;
+                DOVDD-supply = <&ov5640_vdddo_1v8>;
+                DVDD-supply = <&ov5640_vddd_1v5>;
+                AVDD-supply = <&ov5640_vdda_2v8>;
+
+                powerdown-gpios = <&pinctrl RZG2L_GPIO(2, 0) GPIO_ACTIVE_LOW>;
+                reset-gpios = <&pinctrl RZG2L_GPIO(40, 2) GPIO_ACTIVE_HIGH>;
+
+                port {
+                        ov5640_to_csi: endpoint {
+                                clock-lanes = <0>;
+                                data-lanes = <1 2>;
+                                remote-endpoint = <&csi2_in>;
+                        };
+                };
+        };
+};
+
+&cru {
+        status = "okay";
+};
+
+&csi2 {
+        status = "okay";
+
+        ports {
+                port {
+                        csi2_in: endpoint {
+                                clock-lanes = <0>;
+                                data-lanes = <1 2>;
+                                remote-endpoint = <&ov5640_to_csi>;
+                        };
+                };
+        };
 };
