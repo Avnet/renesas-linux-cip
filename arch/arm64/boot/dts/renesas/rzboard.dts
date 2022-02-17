@@ -297,6 +297,11 @@
 			power-source  = <1800>;
 		};
 	};
+
+	canfd1_pins: canfd1 {
+		groups = "can1_tx_a", "can1_rx_a";
+		function = "can1";
+	};
 };
 
 &scif0 {
@@ -456,4 +461,17 @@
                         };
                 };
         };
+};
+
+&can {
+	pinctrl-0 = <&canfd1_pins>;
+	pinctrl-names = "default";
+	status = "okay";
+
+	/* Default set as Classical CAN(CAN 2.0) mode, remove to enable CAN FD mode */
+	renesas,no-can-fd;
+
+	channel1 {
+		status = "okay";
+	};
 };
