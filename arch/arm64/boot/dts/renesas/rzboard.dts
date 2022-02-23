@@ -162,10 +162,45 @@
 			gpios = <&pinctrl RZG2L_GPIO(39, 0) GPIO_ACTIVE_LOW>;
 		};
 	};
+
+	sound-da7212 {
+		compatible = "simple-audio-card";
+		simple-audio-card,name = "audio-da7212";
+		simple-audio-card,format = "i2s";
+		simple-audio-card,bitclock-master = <&cpu_dai>;
+		simple-audio-card,frame-master = <&cpu_dai>;
+		//simple-audio-card,mclk-fs = <256>;
+
+		simple-audio-card,widgets =
+			"Microphone", "Microphone Jack",
+			"Headphone", "Headphone Jack";
+		simple-audio-card,routing =
+			"MIC1", "Microphone Jack",
+			"Microphone Jack", "Mic Bias 1",
+			"Headphone Jack", "HPL",
+			"Headphone Jack", "HPR";
+
+		cpu_dai: simple-audio-card,cpu {
+			sound-dai = <&ssi0>;
+		};
+
+		codec_dai: simple-audio-card,codec {
+			sound-dai = <&da7212>;
+			//clocks = <&versa3 3>;
+		};
+	};
 };
 
 &xinclk {
 	clock-frequency = <24000000>;
+};
+
+&audio_clk1{
+	clock-frequency = <11289600>;
+};
+
+&audio_clk2{
+	clock-frequency = <12288000>;
 };
 
 &i2c3 {
@@ -192,9 +227,30 @@
 		clock-divider-read-only = <1>, <1>, <1>, <1>, <1>;
 		clock-flags = <2176>, <2176>, <2176>, <2052>, <2176>, <2048>;
 	};
+
+	da7212: codec@1a {
+		compatible = "dlg,da7212";
+		#sound-dai-cells = <0>;
+		reg = <0x1a>;
+		dlg,micbias1-lvl = <2500>;
+		dlg,micbias2-lvl = <2500>;
+		VDDA-supply = <&reg_1p8v>;
+		VDDIO-supply = <&reg_3p3v>;
+		VDDMIC-supply = <&reg_3p3v>;
+		clocks = <&versa3 3>;
+		clock-names = "mclk";
+	};
 };
 
 &pinctrl {
+	pinctrl-0 = <&sound_clk_pins>;
+	pinctrl-names = "default";
+
+	sound_clk_pins: sound_clk {
+		pins = "AUDIO_CLK1", "AUDIO_CLK2";
+		input-enable;
+	};
+
 	i2c3_pins: i2c3 {
 		groups = "i2c3_b";
 		function = "i2c3";
@@ -213,6 +269,11 @@
 	scif0_pins: scif0 {
 		groups = "scif0_data";
 		function = "scif0";
+	};
+
+	ssi0_pins: ssi0 {
+		groups = "ssi0_ctrl_d", "ssi0_data_d";
+		function = "ssi0";
 	};
 
 	/* USB Channel 0 */
@@ -474,4 +535,15 @@
 	channel1 {
 		status = "okay";
 	};
+};
+
+&ssi0 {
+	pinctrl-0 = <&ssi0_pins>;
+	pinctrl-names = "default";
+	#sound-dai-cells = <0>;
+
+	dmas = <&dma0 0x9501>,
+	       <&dma0 0x9502>;
+	dma-names = "tx", "rx";
+	status = "okay";
 };
