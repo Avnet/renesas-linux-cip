@@ -307,40 +307,6 @@
 		};
 	};
 
-	sdhi0_pins: sd0 {
-		sd0_data {
-			pins = "SD0_DATA0", "SD0_DATA1", "SD0_DATA2", "SD0_DATA3";
-			power-source  = <3300>;
-		};
-
-		sd0_ctrl {
-			pins = "SD0_CLK", "SD0_CMD";
-			power-source  = <3300>;
-		};
-
-		sd0_mux {
-			groups = "sdhi0_cd_b";
-			function = "sdhi0";
-		};
-	};
-
-	sdhi0_pins_uhs: sd0_uhs {
-		sd1_data_uhs {
-			pins = "SD0_DATA0", "SD0_DATA1", "SD0_DATA2", "SD0_DATA3";
-			power-source  = <1800>;
-		};
-
-		sd0_ctrl_uhs {
-			pins = "SD0_CLK", "SD0_CMD";
-			power-source  = <1800>;
-		};
-
-		sd0_mux_uhs {
-			groups = "sdhi0_cd_b";
-			function = "sdhi0";
-		};
-	};
-
 	sdhi1_pins: sd1 {
 		sd1_data {
 			pins = "SD1_DATA0", "SD1_DATA1", "SD1_DATA2", "SD1_DATA3";
@@ -384,25 +350,7 @@
 	status = "okay";
 };
 
-/* for uSD card */
-&sdhi0 {
-	pinctrl-0 = <&sdhi0_pins>;
-	pinctrl-1 = <&sdhi0_pins_uhs>;
-	pinctrl-names = "default", "state_uhs";
-
-	vmmc-supply = <&reg_3p3v>;
-	bus-width = <4>;
-	no-mmc;
-	no-sdio;
-	non-removable;
-	sd-uhs-sdr50;
-	sd-uhs-sdr104;
-	keep-power-in-suspend;
-	status = "okay";
-};
-
-/* for 16Gb eMMC */
-/*
+/* for both 16Gb eMMC and external uSD card */
 &sdhi0 {
 	pinctrl-0 = <&sdhi0_emmc_pins>;
 	pinctrl-1 = <&sdhi0_emmc_pins>;
@@ -411,11 +359,10 @@
 	vmmc-supply = <&reg_3p3v>;
 	vqmmc-supply = <&reg_1p8v>;
 	bus-width = <8>;
-	mmc-hs200-1_8v;
 	non-removable;
 	fixed-emmc-driver-type = <1>;
 	status = "okay";
-}; */
+};
 
 /*wifi*/
 &sdhi1 {
