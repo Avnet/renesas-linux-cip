@@ -507,3 +507,7 @@
 	dma-names = "tx", "rx";
 	status = "okay";
 };
+
+&wdt0 {
+	    status = "okay";
+};
