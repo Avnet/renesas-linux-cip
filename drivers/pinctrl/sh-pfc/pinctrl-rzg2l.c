@@ -607,10 +607,9 @@ static void rzg2l_gpio_irq_disable(struct irq_data *d)
 	if (gpioint == pctrl->psoc->ngpioints)
 		return;
 
-	tint_slot = rzg2l_gpio_irq_check_tint_slot(pctrl, gpioint);
+	tint_slot = rzg2l_gpio_irq_check_tint_slot(pctrl, hw_irq);
 	if (tint_slot ==  pctrl->psoc->nirqs)
 		return;
-
 
 	spin_lock_irqsave(&pctrl->lock, flags);
 
@@ -619,7 +618,7 @@ static void rzg2l_gpio_irq_disable(struct irq_data *d)
 	writeq(reg64, pctrl->base + ISEL(port));
 
 	reg32 = readl(pctrl->base_tint + TSSR(tint_slot / 4));
-	reg32 &= ~(GENMASK(7, 0) << (tint_slot % 4));
+	reg32 &= ~(GENMASK(7, 0) << ((tint_slot % 4) * 8));
 	writel(reg32, pctrl->base_tint + TSSR(tint_slot / 4));
 
 	spin_unlock_irqrestore(&pctrl->lock, flags);
@@ -627,7 +626,7 @@ static void rzg2l_gpio_irq_disable(struct irq_data *d)
 	pctrl->tint[tint_slot] = 0;
 }
 
-static void rzg2l_gpio_irq_enable(struct irq_data *d)
+static void rzg2l_gpio_irq_mask(struct irq_data *d)
 {
 	struct gpio_chip *chip = irq_data_get_irq_chip_data(d);
 	struct rzg2l_pinctrl *pctrl = gpiochip_get_data(chip);
@@ -637,7 +636,6 @@ static void rzg2l_gpio_irq_enable(struct irq_data *d)
 	u32 gpioint;
 	u32 tint_slot;
 	unsigned long flags;
-	u64 reg64;
 	u32 reg32;
 
 	gpioint = rzg2l_gpio_irq_validate_id(pctrl, port, bit);
@@ -650,13 +648,42 @@ static void rzg2l_gpio_irq_enable(struct irq_data *d)
 
 	spin_lock_irqsave(&pctrl->lock, flags);
 
-	reg64 = readq(pctrl->base + ISEL(port));
-	reg64 |= BIT(bit * 8);
-	writeq(reg64, pctrl->base + ISEL(port));
+	reg32 = readl(pctrl->base_tint + TSSR(tint_slot / 4));
+	reg32 &= ~(BIT(7) << ((tint_slot % 4) * 8));
+	writel(reg32, pctrl->base_tint + TSSR(tint_slot / 4));
+
+	spin_unlock_irqrestore(&pctrl->lock, flags);
+}
+
+static void rzg2l_gpio_irq_unmask(struct irq_data *d)
+{
+	struct gpio_chip *chip = irq_data_get_irq_chip_data(d);
+	struct rzg2l_pinctrl *pctrl = gpiochip_get_data(chip);
+	int hw_irq = irqd_to_hwirq(d);
+	u32 port = RZG2L_PIN_ID_TO_PORT(hw_irq);
+	u8 bit = RZG2L_PIN_ID_TO_PIN(hw_irq);
+	u32 gpioint;
+	u32 tint_slot;
+	unsigned long flags;
+	u32 reg32;
+
+	gpioint = rzg2l_gpio_irq_validate_id(pctrl, port, bit);
+	if (gpioint == pctrl->psoc->ngpioints)
+		return;
+
+	tint_slot = rzg2l_gpio_irq_check_tint_slot(pctrl, hw_irq);
+	if (tint_slot ==  pctrl->psoc->nirqs)
+		return;
+
+	spin_lock_irqsave(&pctrl->lock, flags);
 
 	reg32 = readl(pctrl->base_tint + TSSR(tint_slot / 4));
 	reg32 |= (BIT(7) | gpioint) << (8 * (tint_slot % 4));
 	writel(reg32, pctrl->base_tint + TSSR(tint_slot / 4));
+
+	/* Clear Interrupt status bit to avoid unexpected triggering */
+	reg32 = readl(pctrl->base_tint + TSCR);
+	writel(reg32 & ~BIT(tint_slot), pctrl->base_tint + TSCR);
 
 	spin_unlock_irqrestore(&pctrl->lock, flags);
 }
@@ -674,6 +701,7 @@ static int rzg2l_gpio_irq_set_type(struct irq_data *d, unsigned int type)
 	u32 irq_type;
 	u32 reg32;
 	u8 reg8;
+	u64 reg64;
 
 	gpioint = rzg2l_gpio_irq_validate_id(pctrl, port, bit);
 	if (gpioint == pctrl->psoc->ngpioints)
@@ -696,6 +724,12 @@ static int rzg2l_gpio_irq_set_type(struct irq_data *d, unsigned int type)
 	case IRQ_TYPE_EDGE_FALLING:
 		irq_type = FALLING_EDGE;
 		break;
+	case IRQ_TYPE_LEVEL_LOW:
+		irq_type = LOW_LEVEL;
+		break;
+	case IRQ_TYPE_LEVEL_HIGH:
+		irq_type = HIGH_LEVEL;
+		break;
 	default:
 		return -EINVAL;
 	}
@@ -706,6 +740,10 @@ static int rzg2l_gpio_irq_set_type(struct irq_data *d, unsigned int type)
 	reg8 = readb(pctrl->base + PMC(port));
 	reg8 &= ~BIT(bit);
 	writeb(reg8, pctrl->base + PMC(port));
+
+	reg64 = readq(pctrl->base + ISEL(port));
+	reg64 |= BIT(bit * 8);
+	writeq(reg64, pctrl->base + ISEL(port));
 
 	pctrl->tint[tint_slot] = BIT(16) | hw_irq;
 
@@ -919,8 +957,9 @@ static int rzg2l_pinctrl_add_gpiochip(struct rzg2l_pinctrl *pctrl)
 	chip->owner = THIS_MODULE;
 
 	irq_chip->name = name;
+	irq_chip->irq_mask = rzg2l_gpio_irq_mask;
+	irq_chip->irq_unmask = rzg2l_gpio_irq_unmask;
 	irq_chip->irq_disable = rzg2l_gpio_irq_disable;
-	irq_chip->irq_enable = rzg2l_gpio_irq_enable;
 	irq_chip->irq_set_type = rzg2l_gpio_irq_set_type;
 	irq_chip->flags = IRQCHIP_SET_TYPE_MASKED;
 
