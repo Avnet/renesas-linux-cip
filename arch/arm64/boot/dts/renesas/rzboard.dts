@@ -190,6 +190,19 @@
 			//clocks = <&versa3 3>;
 		};
 	};
+
+	hdmi-out {
+		compatible = "hdmi-connector";
+		label = "micro-HDMI";
+		type = "d";
+		status = "okay";
+
+		port {
+			hdmi_con_out: endpoint {
+				remote-endpoint = <&it6161_out>;
+			};
+		};
+	};
 };
 
 &xinclk {
@@ -202,6 +215,45 @@
 
 &audio_clk2{
 	clock-frequency = <12288000>;
+};
+
+&i2c1 {
+	pinctrl-0 = <&i2c1_pins>;
+	pinctrl-names = "default";
+	clock-frequency = <100000>;
+
+	status = "okay";
+
+	it6161: hdmi@6c {
+		compatible = "ite,it6161";
+		reg = <0x6c>;
+
+		it6161-addr-hdmi-tx = <0x4c>;
+		switch-gpios = <&pinctrl  RZG2L_GPIO(43, 0) GPIO_ACTIVE_LOW>;
+		reset-gpios = <&pinctrl  RZG2L_GPIO(19, 0) GPIO_ACTIVE_LOW>;
+
+		interrupt-parent = <&pinctrl>;
+		interrupts = <RZG2L_GPIO(1, 1) IRQ_TYPE_NONE>;
+
+		ports {
+			#address-cells = <1>;
+			#size-cells = <0>;
+
+			port@0 {
+				reg = <0>;
+				it6161_in: endpoint@0 {
+					remote-endpoint = <&dsi0_out>;
+				};
+			};
+
+			port@1 {
+				reg = <1>;
+				it6161_out: endpoint@1 {
+					remote-endpoint = <&hdmi_con_out>;
+				};
+			};
+		};
+	};
 };
 
 &i2c3 {
@@ -249,6 +301,11 @@
 
 	sound_clk_pins: sound_clk {
 		pins = "AUDIO_CLK1", "AUDIO_CLK2";
+		input-enable;
+	};
+
+	i2c1_pins: i2c1 {
+		pins = "RIIC1_SDA", "RIIC1_SCL";
 		input-enable;
 	};
 
@@ -510,4 +567,21 @@
 
 &wdt0 {
 	    status = "okay";
+};
+
+&dsi0 {
+	status = "okay";
+
+	ports {
+		port@1 {
+			dsi0_out: endpoint {
+				remote-endpoint = <&it6161_in>;
+				data-lanes = <1 2 3 4>;
+			};
+		};
+	};
+};
+
+&du {
+	status = "okay";
 };
