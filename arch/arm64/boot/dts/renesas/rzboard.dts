@@ -191,6 +191,7 @@
 		};
 	};
 
+	/*
 	hdmi-out {
 		compatible = "hdmi-connector";
 		label = "micro-HDMI";
@@ -202,6 +203,15 @@
 				remote-endpoint = <&it6161_out>;
 			};
 		};
+	};
+	*/
+
+	backlight: backlight {
+		compatible = "pwm-backlight";
+		enable-gpios = <&pinctrl RZG2L_GPIO(43, 3) GPIO_ACTIVE_HIGH>;
+		pwms = <&gpt5 0 50000>;
+		brightness-levels = <0 2 8 16 32 64 128 255>;
+		default-brightness-level = <6>;
 	};
 };
 
@@ -217,6 +227,7 @@
 	clock-frequency = <12288000>;
 };
 
+/*
 &i2c1 {
 	pinctrl-0 = <&i2c1_pins>;
 	pinctrl-names = "default";
@@ -255,6 +266,7 @@
 		};
 	};
 };
+*/
 
 &i2c3 {
 	pinctrl-0 = <&i2c3_pins>;
@@ -391,6 +403,11 @@
 	canfd1_pins: canfd1 {
 		groups = "can1_tx_a", "can1_rx_a";
 		function = "can1";
+	};
+
+	gpt5_pins: gpt5 {
+		groups = "gpt5_a_b";
+		function = "gpt5";
 	};
 };
 
@@ -569,14 +586,38 @@
 	    status = "okay";
 };
 
+&gpt5 {
+	pinctrl-0 = <&gpt5_pins>;
+	pinctrl-names = "default";
+	channel="channel_A";
+	status = "okay";
+};
+
 &dsi0 {
 	status = "okay";
+	#address-cells = <1>;
+	#size-cells = <0>;
 
 	ports {
 		port@1 {
 			dsi0_out: endpoint {
-				remote-endpoint = <&it6161_in>;
-				data-lanes = <1 2 3 4>;
+				remote-endpoint = <&panel_in>;
+				data-lanes = <1 2>;
+			};
+		};
+	};
+
+	panel@0 {
+		compatible = "ilitek,ili9881c";
+		reg = <0>;
+		dsi-lanes = <2>;
+		enable-gpios = <&pinctrl  RZG2L_GPIO(43, 0) GPIO_ACTIVE_HIGH>;
+		backlight = <&backlight>;
+		status = "okay";
+
+		port {
+			panel_in: endpoint {
+				remote-endpoint = <&dsi0_out>;
 			};
 		};
 	};
