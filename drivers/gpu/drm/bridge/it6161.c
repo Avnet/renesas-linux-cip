@@ -1003,21 +1003,8 @@ unlock:
 	return num_modes;
 }
 
-static enum drm_mode_status it6161_mode_valid(struct drm_connector *connector,
-			     struct drm_display_mode *mode)
-{
-	if (mode->clock > 165000)
-		return MODE_CLOCK_HIGH;
-
-	if (mode->vdisplay > 720)
-		return MODE_BAD_VVALUE;
-
-	return MODE_OK;
-}
-
 static const struct drm_connector_helper_funcs it6161_connector_helper_funcs = {
 	.get_modes = it6161_get_modes,
-//	.mode_valid = it6161_mode_valid,
 };
 
 static enum drm_connector_status it6161_detect(struct drm_connector *connector, bool force)
@@ -1153,7 +1140,7 @@ it6161_bridge_mode_valid(struct drm_bridge *bridge,
 	if (mode->clock > 148000)
 		return MODE_CLOCK_HIGH;
 
-	/* TODO, Only 480p60 work with imx8ulp now */
+	/* support maximum resolution 720p now */
 	if (mode->vdisplay > 720)
 		return MODE_BAD_VVALUE;
 
@@ -1206,37 +1193,6 @@ static void it6161_bridge_disable(struct drm_bridge *bridge)
 	it6161_hdmi_tx_int_mask_enable(it6161);
 }
 
-#if 0
-static enum drm_connector_status it6161_bridge_detect(struct drm_bridge *bridge)
-{
-	struct it6161 *it6161 = bridge_to_it6161(bridge);
-	enum drm_connector_status status = connector_status_disconnected;
-	bool hpd = hdmi_tx_get_sink_hpd(it6161);
-	struct device *dev = &it6161->i2c_hdmi_tx->dev;
-
-	DRM_DEV_DEBUG_DRIVER(dev, "hpd:%s", hpd ? "high" : "low");
-
-	if (hpd) {
-		it6161_variable_config(it6161);
-		status = connector_status_connected;
-	}
-
-	it6161_set_interrupts_active_level(HIGH);
-	it6161_mipi_rx_int_mask_enable(it6161);
-	it6161_hdmi_tx_int_mask_enable(it6161);
-
-	return status;
-}
-
-static struct edid *it6161_bridge_get_edid(struct drm_bridge *bridge,
-					   struct drm_connector *connector)
-{
-	struct it6161 *it6161 = bridge_to_it6161(bridge);
-
-	return it6161_get_edid(it6161);
-}
-#endif
-
 static const struct drm_bridge_funcs it6161_bridge_funcs = {
 	.attach = it6161_bridge_attach,
 	.detach = it6161_bridge_detach,
@@ -1244,8 +1200,6 @@ static const struct drm_bridge_funcs it6161_bridge_funcs = {
 	.mode_set = it6161_bridge_mode_set,
 	.enable = it6161_bridge_enable,
 	.disable = it6161_bridge_disable,
-//	.detect = it6161_bridge_detect,
-//	.get_edid = it6161_bridge_get_edid,
 };
 
 static bool it6161_check_device_ready(struct it6161 *it6161)
@@ -2424,7 +2378,6 @@ static int it6161_i2c_probe(struct i2c_client *i2c_mipi_rx,
 		gpiod_set_value_cansleep(it6161->enable_gpio, 1);
 	}
 
-#if 0
 	/* The reset GPIO is optional. */
 	it6161->reset_gpio = devm_gpiod_get_optional(dev, "reset", GPIOD_OUT_LOW);
 	if (IS_ERR_OR_NULL(it6161->reset_gpio))  {
@@ -2432,7 +2385,6 @@ static int it6161_i2c_probe(struct i2c_client *i2c_mipi_rx,
 	} else {
 		gpiod_set_value_cansleep(it6161->reset_gpio, 0);
 	}
-#endif
 
 	it6161_parse_dt(it6161, dev->of_node);
 	it6161->regmap_mipi_rx = devm_regmap_init_i2c(i2c_mipi_rx, &it6161_mipi_rx_bridge_regmap_config);
