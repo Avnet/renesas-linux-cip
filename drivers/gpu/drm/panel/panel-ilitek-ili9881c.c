@@ -21,6 +21,11 @@ struct ili9881c_panel {
 	struct drm_panel	panel;
 	struct mipi_dsi_device	*dsi;
 
+	struct regulator *vddi_supply;
+    struct regulator *vddh_supply;
+    struct regulator *avdd_supply;
+    struct regulator *avee_supply;
+
 	struct gpio_desc	*enable_gpio;
 	struct gpio_desc	*reset_gpio;
 	struct backlight_device *backlight;
@@ -259,6 +264,8 @@ static const struct ili9881c_instr ili9881c_init[] = {
 #endif
 };
 
+static void ili9881c_getID(struct ili9881c_panel *tftcp);
+
 static inline struct ili9881c_panel *panel_to_ili9881c(struct drm_panel *panel)
 {
 	return container_of(panel, struct ili9881c_panel, panel);
@@ -354,18 +361,50 @@ static void turn_backlight(struct backlight_device *backlight, int status)
 static int ili9881c_prepare(struct drm_panel *panel)
 {
 	struct ili9881c_panel *tftcp = panel_to_ili9881c(panel);
+	int ret;
 
 	dev_dbg(&tftcp->dsi->dev,"%s\n",__func__);
 
+	ret = regulator_enable(tftcp->vddi_supply);
+    if (ret < 0)
+        return ret;
+
+    ret = regulator_enable(tftcp->avdd_supply);
+    if (ret < 0)
+        goto err_avdd;
+
+    msleep(1);
+
+    ret = regulator_enable(tftcp->avee_supply);
+    if (ret < 0)
+        goto err_avee;
+
+    msleep(10);
+
+    ret = regulator_enable(tftcp->vddh_supply);
+    if (ret < 0) {
+        goto err_vddh;
+	}
+
 	if (tftcp->enable_gpio != NULL)
 	{
-		printk("#### %s() enable gpio %s +%d\n", __func__, __FILE__, __LINE__);
 		gpiod_set_value(tftcp->enable_gpio, 1);
 	}
 
     ili9881c_reset(tftcp);
 
 	return 0;
+
+err_vddh:
+    regulator_disable(tftcp->avee_supply);
+
+err_avee:
+    regulator_disable(tftcp->avdd_supply);
+
+err_avdd:
+    regulator_disable(tftcp->vddi_supply);
+
+	return ret;
 }
 
 static int ili9881c_enable(struct drm_panel *panel)
@@ -389,6 +428,8 @@ static int ili9881c_enable(struct drm_panel *panel)
 		if (ret)
 			return ret;
 	}
+
+	printk("####>>>>>>>> %s() register initial okay %s +%d\n", __func__, __FILE__, __LINE__);
 
 	ret = ili9881c_switch_page(tftcp, 0);
 	if (ret)
@@ -522,6 +563,7 @@ static int ili9881c_get_modes(struct drm_panel *panel)
 #endif
 
 	printk("#### %s() start %s +%d\n", __func__, __FILE__, __LINE__);
+	ili9881c_getID(tftcp);
 
 #ifndef USE_DISPLAY_TIMINGS
   dev_dbg(&tftcp->dsi->dev,"%s get drm_display_mode\n",__func__);
@@ -582,6 +624,7 @@ static const struct drm_panel_funcs ili9881c_funcs = {
 
 static int ili9881c_dsi_probe(struct mipi_dsi_device *dsi)
 {
+	struct device *dev = &dsi->dev;
 	struct device_node *backlight;
 	struct ili9881c_panel *tftcp;
 	int ret;
@@ -591,6 +634,23 @@ static int ili9881c_dsi_probe(struct mipi_dsi_device *dsi)
 	tftcp = devm_kzalloc(&dsi->dev, sizeof(*tftcp), GFP_KERNEL);
 	if (!tftcp)
 		return -ENOMEM;
+
+	tftcp->vddi_supply = devm_regulator_get(dev, "vddi");
+    if (IS_ERR(tftcp->vddi_supply))
+        return PTR_ERR(tftcp->vddi_supply);
+
+    tftcp->vddh_supply = devm_regulator_get(dev, "vddh");
+    if (IS_ERR(tftcp->vddh_supply))
+        return PTR_ERR(tftcp->vddh_supply);
+
+    tftcp->avdd_supply = devm_regulator_get(dev, "avdd");
+    if (IS_ERR(tftcp->avdd_supply))
+        return PTR_ERR(tftcp->avdd_supply);
+
+    tftcp->avee_supply = devm_regulator_get(dev, "avee");
+    if (IS_ERR(tftcp->avee_supply)) {
+        return PTR_ERR(tftcp->avee_supply);
+	}
 
 	mipi_dsi_set_drvdata(dsi, tftcp);
 	tftcp->dsi = dsi;
@@ -669,6 +729,13 @@ static void ili9881c_dsi_shutdown(struct mipi_dsi_device *dsi)
 
 	ili9881c_disable(&tftcp->panel);
 	ili9881c_unprepare(&tftcp->panel);
+
+	regulator_disable(tftcp->vddh_supply);
+    msleep(10);
+
+    regulator_disable(tftcp->avee_supply);
+    regulator_disable(tftcp->avdd_supply);
+    regulator_disable(tftcp->vddi_supply);
 }
 
 static const struct of_device_id ili9881c_of_match[] = {
