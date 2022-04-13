@@ -264,8 +264,6 @@ static const struct ili9881c_instr ili9881c_init[] = {
 #endif
 };
 
-static void ili9881c_getID(struct ili9881c_panel *tftcp);
-
 static inline struct ili9881c_panel *panel_to_ili9881c(struct drm_panel *panel)
 {
 	return container_of(panel, struct ili9881c_panel, panel);
@@ -393,6 +391,8 @@ static int ili9881c_prepare(struct drm_panel *panel)
 
     ili9881c_reset(tftcp);
 
+	ili9881c_getID(tftcp);
+
 	return 0;
 
 err_vddh:
@@ -429,8 +429,6 @@ static int ili9881c_enable(struct drm_panel *panel)
 			return ret;
 	}
 
-	printk("####>>>>>>>> %s() register initial okay %s +%d\n", __func__, __FILE__, __LINE__);
-
 	ret = ili9881c_switch_page(tftcp, 0);
 	if (ret)
 		return ret;
@@ -459,6 +457,7 @@ static int ili9881c_enable(struct drm_panel *panel)
 
 	turn_backlight(tftcp->backlight, 1);
 
+	printk("#### %s() finish okay %s +%d\n", __func__, __FILE__, __LINE__);
 	dev_dbg(&tftcp->dsi->dev,"%s\n",__func__);
 
 	return 0;
@@ -563,7 +562,6 @@ static int ili9881c_get_modes(struct drm_panel *panel)
 #endif
 
 	printk("#### %s() start %s +%d\n", __func__, __FILE__, __LINE__);
-	ili9881c_getID(tftcp);
 
 #ifndef USE_DISPLAY_TIMINGS
   dev_dbg(&tftcp->dsi->dev,"%s get drm_display_mode\n",__func__);
