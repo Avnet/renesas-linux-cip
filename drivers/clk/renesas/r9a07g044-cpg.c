@@ -484,6 +484,8 @@ static const unsigned int r9a07g044_crit_mod_clks[] __initconst = {
 	MOD_CLK_BASE + R9A07G044_IA55_PCLK,
 	MOD_CLK_BASE + R9A07G044_IA55_CLK,
 	MOD_CLK_BASE + R9A07G044_DMAC_ACLK,
+        MOD_CLK_BASE + R9A07G044_SCIF2_CLK_PCK,
+        MOD_CLK_BASE + R9A07G044_OSTM2_PCLK,
 };
 
 const struct rzg2l_cpg_info r9a07g044_cpg_info = {
