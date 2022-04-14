@@ -15,16 +15,20 @@
 #include <video/videomode.h>
 #include <linux/backlight.h>
 
+//#define CONFIG_SELFTEST_MODE
+#define CONFIG_REGULATOR_ENABLE
 #define USE_DISPLAY_TIMINGS
 
 struct ili9881c_panel {
 	struct drm_panel	panel;
 	struct mipi_dsi_device	*dsi;
 
+#ifdef CONFIG_REGULATOR_ENABLE
 	struct regulator *vddi_supply;
-    struct regulator *vddh_supply;
-    struct regulator *avdd_supply;
-    struct regulator *avee_supply;
+	struct regulator *vddh_supply;
+	struct regulator *avdd_supply;
+	struct regulator *avee_supply;
+#endif
 
 	struct gpio_desc	*enable_gpio;
 	struct gpio_desc	*reset_gpio;
@@ -50,7 +54,7 @@ struct ili9881c_instr {
 
 #define ILI9881C_SWITCH_PAGE_INSTR(_page)	\
 	{					\
-		.op = ILI9881C_SWITCH_PAGE,	\
+		.op = ILI9881C_SWITCH_PAGE, \
 		.arg = {			\
 			.page = (_page),	\
 		},				\
@@ -256,7 +260,7 @@ static const struct ili9881c_instr ili9881c_init[] = {
 	ILI9881C_COMMAND_INSTR(0xD1, 0x56),
 	ILI9881C_COMMAND_INSTR(0xD2, 0x66),
 	ILI9881C_COMMAND_INSTR(0xD3, 0x39),
-#if 0
+#ifdef CONFIG_SELFTEST_MODE
 /* BIST mode (Built-in Self-test Pattern)*/
 	ILI9881C_SWITCH_PAGE_INSTR(4),
 	ILI9881C_COMMAND_INSTR(0x2d, 0x08),
@@ -315,7 +319,7 @@ static void ili9881c_getID(struct ili9881c_panel *tftcp)
 {
 	u8 id[3];
 
-    tftcp->dsi->mode_flags |= MIPI_DSI_MODE_LPM;
+	tftcp->dsi->mode_flags |= MIPI_DSI_MODE_LPM;
 	ili9881c_switch_page(tftcp, 1);
 	id[0] = ili9881c_read_cmd_data(tftcp, 0x00);
 	id[1] = ili9881c_read_cmd_data(tftcp, 0x01);
@@ -353,35 +357,32 @@ static void turn_backlight(struct backlight_device *backlight, int status)
 		backlight->props.state |= BL_CORE_FBBLANK;
 		backlight_update_status(backlight);
 	}
-
 }
 
-static int ili9881c_prepare(struct drm_panel *panel)
+#ifdef CONFIG_REGULATOR_ENABLE
+int enable_regulators(struct ili9881c_panel *tftcp)
 {
-	struct ili9881c_panel *tftcp = panel_to_ili9881c(panel);
 	int ret;
 
-	dev_dbg(&tftcp->dsi->dev,"%s\n",__func__);
-
 	ret = regulator_enable(tftcp->vddi_supply);
-    if (ret < 0)
-        return ret;
+	if (ret < 0)
+		return ret;
 
-    ret = regulator_enable(tftcp->avdd_supply);
-    if (ret < 0)
-        goto err_avdd;
+	ret = regulator_enable(tftcp->avdd_supply);
+	if (ret < 0)
+		goto err_avdd;
 
-    msleep(1);
+	msleep(1);
 
-    ret = regulator_enable(tftcp->avee_supply);
-    if (ret < 0)
-        goto err_avee;
+	ret = regulator_enable(tftcp->avee_supply);
+	if (ret < 0)
+		goto err_avee;
 
-    msleep(10);
+	msleep(10);
 
-    ret = regulator_enable(tftcp->vddh_supply);
-    if (ret < 0) {
-        goto err_vddh;
+	ret = regulator_enable(tftcp->vddh_supply);
+	if (ret < 0) {
+		goto err_vddh;
 	}
 
 	if (tftcp->enable_gpio != NULL)
@@ -389,22 +390,44 @@ static int ili9881c_prepare(struct drm_panel *panel)
 		gpiod_set_value(tftcp->enable_gpio, 1);
 	}
 
-    ili9881c_reset(tftcp);
+err_vddh:
+	regulator_disable(tftcp->avee_supply);
 
+err_avee:
+	regulator_disable(tftcp->avdd_supply);
+
+err_avdd:
+	regulator_disable(tftcp->vddi_supply);
+
+	return ret;
+}
+
+void disable_regulators(struct ili9881c_panel *tftcp)
+{
+	regulator_disable(tftcp->vddh_supply);
+	msleep(10);
+	regulator_disable(tftcp->avee_supply);
+	regulator_disable(tftcp->avdd_supply);
+	regulator_disable(tftcp->vddi_supply);
+}
+#endif
+static int ili9881c_prepare(struct drm_panel *panel)
+{
+	struct ili9881c_panel *tftcp = panel_to_ili9881c(panel);
+	int ret;
+
+	dev_dbg(&tftcp->dsi->dev,"%s\n",__func__);
+
+#ifdef CONFIG_REGULATOR_ENABLE
+	ret=enable_regulators(tftcp);
+	if( ret )
+		return ret;
+#endif
+
+	ili9881c_reset(tftcp);
 	ili9881c_getID(tftcp);
 
 	return 0;
-
-err_vddh:
-    regulator_disable(tftcp->avee_supply);
-
-err_avee:
-    regulator_disable(tftcp->avdd_supply);
-
-err_avdd:
-    regulator_disable(tftcp->vddi_supply);
-
-	return ret;
 }
 
 static int ili9881c_enable(struct drm_panel *panel)
@@ -424,7 +447,7 @@ static int ili9881c_enable(struct drm_panel *panel)
 			ret = ili9881c_switch_page(tftcp, instr->arg.page);
 		else if (instr->op == ILI9881C_COMMAND)
 			ret = ili9881c_send_cmd_data(tftcp, instr->arg.cmd.cmd,
-						      instr->arg.cmd.data);
+							  instr->arg.cmd.data);
 		if (ret)
 			return ret;
 	}
@@ -433,7 +456,7 @@ static int ili9881c_enable(struct drm_panel *panel)
 	if (ret)
 		return ret;
 
-    /* Set tear ON */
+	/* Set tear ON */
 	ret = mipi_dsi_dcs_set_tear_on(tftcp->dsi, MIPI_DSI_DCS_TEAR_MODE_VBLANK);
 	if (ret < 0) {
 		dev_err(&tftcp->dsi->dev, "Failed to set tear ON (%d)\n", ret);
@@ -510,8 +533,12 @@ static int ili9881c_unprepare(struct drm_panel *panel)
 
 #ifndef USE_DISPLAY_TIMINGS
 static const struct drm_display_mode default_mode = {
+#if 0
 	.clock		= 67000,
 	.vrefresh	= 60,
+#else
+	.clock = 1240 * 1930 * 60 / 1000,
+#endif
 
 	.hdisplay	= 720,
 	.hsync_start = 720 + 120,
@@ -529,7 +556,7 @@ static const struct drm_display_mode default_mode = {
 frame rate = 52.5Hz [2 data lanes: 50~60Hz]
 pclk=800M * 2lane / 24bpp =66.67M */
 static const struct display_timing ph720128t003_timing = {
-    .pixelclock = { 64000000, 67000000, 7100000 },
+	.pixelclock = { 64000000, 67000000, 7100000 },
 	.hactive = { 720, 720, 720 },
 	.hfront_porch = { 80, 120, 120 },
 	.hback_porch = { 10, 20, 60 },
@@ -564,7 +591,7 @@ static int ili9881c_get_modes(struct drm_panel *panel)
 	printk("#### %s() start %s +%d\n", __func__, __FILE__, __LINE__);
 
 #ifndef USE_DISPLAY_TIMINGS
-  dev_dbg(&tftcp->dsi->dev,"%s get drm_display_mode\n",__func__);
+	dev_info(&tftcp->dsi->dev,"#### %s() get drm_display_mode\n",__func__);
 	mode = drm_mode_duplicate(panel->drm, &default_mode);
 	if (!mode) {
 		dev_err(&tftcp->dsi->dev, "failed to add mode %ux%ux@%u\n",
@@ -576,7 +603,7 @@ static int ili9881c_get_modes(struct drm_panel *panel)
 		drm_mode_set_name(mode);
 
 #else
-  dev_dbg(&tftcp->dsi->dev,"%s get display_timing\n",__func__);
+	dev_info(&tftcp->dsi->dev,"####%s() get display_timing\n",__func__);
 	videomode_from_timing(&ph720128t003_timing, &vm);
 
 	mode = drm_mode_create(connector->dev);
@@ -633,22 +660,24 @@ static int ili9881c_dsi_probe(struct mipi_dsi_device *dsi)
 	if (!tftcp)
 		return -ENOMEM;
 
+#ifdef CONFIG_REGULATOR_ENABLE
 	tftcp->vddi_supply = devm_regulator_get(dev, "vddi");
-    if (IS_ERR(tftcp->vddi_supply))
-        return PTR_ERR(tftcp->vddi_supply);
+	if (IS_ERR(tftcp->vddi_supply))
+		return PTR_ERR(tftcp->vddi_supply);
 
-    tftcp->vddh_supply = devm_regulator_get(dev, "vddh");
-    if (IS_ERR(tftcp->vddh_supply))
-        return PTR_ERR(tftcp->vddh_supply);
+	tftcp->vddh_supply = devm_regulator_get(dev, "vddh");
+	if (IS_ERR(tftcp->vddh_supply))
+		return PTR_ERR(tftcp->vddh_supply);
 
-    tftcp->avdd_supply = devm_regulator_get(dev, "avdd");
-    if (IS_ERR(tftcp->avdd_supply))
-        return PTR_ERR(tftcp->avdd_supply);
+	tftcp->avdd_supply = devm_regulator_get(dev, "avdd");
+	if (IS_ERR(tftcp->avdd_supply))
+		return PTR_ERR(tftcp->avdd_supply);
 
-    tftcp->avee_supply = devm_regulator_get(dev, "avee");
-    if (IS_ERR(tftcp->avee_supply)) {
-        return PTR_ERR(tftcp->avee_supply);
+	tftcp->avee_supply = devm_regulator_get(dev, "avee");
+	if (IS_ERR(tftcp->avee_supply)) {
+		return PTR_ERR(tftcp->avee_supply);
 	}
+#endif
 
 	mipi_dsi_set_drvdata(dsi, tftcp);
 	tftcp->dsi = dsi;
@@ -703,7 +732,7 @@ static int ili9881c_dsi_probe(struct mipi_dsi_device *dsi)
 	if (ret < 0)
 		drm_panel_remove(&tftcp->panel);
 
-	printk("#### %s() okay  %s +%d\n", __func__, __FILE__, __LINE__);
+	printk("#### %s() okay	%s +%d\n", __func__, __FILE__, __LINE__);
 	return ret;
 }
 
@@ -728,12 +757,9 @@ static void ili9881c_dsi_shutdown(struct mipi_dsi_device *dsi)
 	ili9881c_disable(&tftcp->panel);
 	ili9881c_unprepare(&tftcp->panel);
 
-	regulator_disable(tftcp->vddh_supply);
-    msleep(10);
-
-    regulator_disable(tftcp->avee_supply);
-    regulator_disable(tftcp->avdd_supply);
-    regulator_disable(tftcp->vddi_supply);
+#ifdef CONFIG_REGULATOR_ENABLE
+	disable_regulators(tftcp);
+#endif
 }
 
 static const struct of_device_id ili9881c_of_match[] = {
@@ -748,7 +774,7 @@ static struct mipi_dsi_driver ili9881c_dsi_driver = {
 	.shutdown	= ili9881c_dsi_shutdown,
 	.driver = {
 		.name		= "panel-ili9881c-dsi",
-		.of_match_table	= ili9881c_of_match,
+		.of_match_table = ili9881c_of_match,
 	},
 };
 module_mipi_dsi_driver(ili9881c_dsi_driver);

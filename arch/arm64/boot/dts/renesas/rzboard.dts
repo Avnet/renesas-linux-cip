@@ -613,10 +613,6 @@
 		dsi-lanes = <2>;
 		enable-gpios = <&pinctrl  RZG2L_GPIO(43, 0) GPIO_ACTIVE_HIGH>;
 		backlight = <&backlight>;
-		vddi-supply = <&reg_1p8v>;
-		vddh-supply = <&reg_1p8v>;
-		avdd-supply = <&reg_1p8v>;
-		avee-supply = <&reg_1p8v>;
 		status = "okay";
 
 		port {
