@@ -47,6 +47,7 @@ config SND_SOC_ALL_CODECS
 	select SND_SOC_ALC5623 if I2C
 	select SND_SOC_ALC5632 if I2C
 	select SND_SOC_BT_SCO
+	select SND_SOC_LITE_CODEC
 	select SND_SOC_BD28623
 	select SND_SOC_CQ0093VC
 	select SND_SOC_CS35L32 if I2C
@@ -437,6 +438,13 @@ config SND_SOC_BD28623
 
 config SND_SOC_BT_SCO
 	tristate "Dummy BT SCO codec driver"
+
+config SND_SOC_LITE_CODEC
+	tristate "Lite driver for generic DAC/ADC"
+	help
+	  This type of codecs only have ADC and DAC,
+	  it does not have any control buses such as I2C.
+	  Its digital audio interface is set by the hardware or is uniquely constant
 
 config SND_SOC_CPCAP
 	tristate "Motorola CPCAP codec"
