@@ -164,6 +164,30 @@
 		};
 	};
 
+	avt_codec: avt_codec {
+		#sound-dai-cells = <1>;
+		compatible = "avt,lite-codec-audio";
+	};
+
+	sound-lite-codec {
+		compatible = "simple-audio-card";
+		simple-audio-card,name = "lite-codec";
+		simple-audio-card,format = "i2s";
+		simple-audio-card,bitclock-inversion;
+		simple-audio-card,frame-master = <&cpu>;
+		simple-audio-card,bitclock-master = <&cpu>;
+
+		cpu: simple-audio-card,cpu {
+			sound-dai = <&ssi3>;
+			dai-tdm-slot-num = <2>;
+			dai-tdm-slot-width = <16>;
+		};
+
+		simple-audio-card,codec {
+			sound-dai = <&avt_codec 1>;
+		};
+	};
+
 	sound-da7212 {
 		compatible = "simple-audio-card";
 		simple-audio-card,name = "audio-da7212";
@@ -203,6 +227,17 @@
 			};
 		};
 	};
+};
+
+&ssi3 {
+	pinctrl-0 = <&ssi3_pins>;
+	pinctrl-names = "default";
+	#sound-dai-cells = <0>;
+
+	dmas = <&dma0 0x9801>,
+	       <&dma0 0x9802>;
+	dma-names = "tx", "rx";
+	status = "okay";
 };
 
 &xinclk {
@@ -298,6 +333,11 @@
 &pinctrl {
 	pinctrl-0 = <&sound_clk_pins>;
 	pinctrl-names = "default";
+
+	ssi3_pins: ssi3 {
+		groups = "ssi3_ctrl", "ssi3_data";
+		function = "ssi3";
+	};
 
 	sound_clk_pins: sound_clk {
 		pins = "AUDIO_CLK1", "AUDIO_CLK2";
