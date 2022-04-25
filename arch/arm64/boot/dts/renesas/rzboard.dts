@@ -215,6 +215,12 @@
 		};
 	};
 
+	graph_sound_card {
+		compatible = "audio-graph-card";
+		label = "avt-sound-card";
+		dais = <&ssi1>;
+	};
+
 	hdmi-out {
 		compatible = "hdmi-connector";
 		label = "micro-HDMI";
@@ -224,6 +230,26 @@
 		port {
 			hdmi_con_out: endpoint {
 				remote-endpoint = <&it6161_out>;
+			};
+		};
+	};
+};
+
+&ssi1 {
+	pinctrl-0 = <&ssi1_pins>;
+	pinctrl-names = "default";
+	#sound-dai-cells = <0>;
+
+	dmas = <&dma0 0x9601>,
+	       <&dma0 0x9602>;
+	dma-names = "tx", "rx";
+	status = "okay";
+
+	ports {
+		i2s2_port0: port@0 {
+			i2s2_cpu_endpoint: endpoint {
+				remote-endpoint = <&codec_endpoint>;
+				dai-format = "i2s";
 			};
 		};
 	};
@@ -270,6 +296,8 @@
 		interrupt-parent = <&pinctrl>;
 		interrupts = <RZG2L_GPIO(1, 1) IRQ_TYPE_NONE>;
 
+		#sound-dai-cells = <0>;
+
 		ports {
 			#address-cells = <1>;
 			#size-cells = <0>;
@@ -285,6 +313,13 @@
 				reg = <1>;
 				it6161_out: endpoint@1 {
 					remote-endpoint = <&hdmi_con_out>;
+				};
+			};
+
+			port@2 {
+				reg = <2>;
+				codec_endpoint: endpoint {
+					remote-endpoint = <&i2s2_cpu_endpoint>;
 				};
 			};
 		};
@@ -333,6 +368,11 @@
 &pinctrl {
 	pinctrl-0 = <&sound_clk_pins>;
 	pinctrl-names = "default";
+
+	ssi1_pins: ssi1 {
+		groups = "ssi1_ctrl_d", "ssi1_data_d";
+		function = "ssi1";
+	};
 
 	ssi3_pins: ssi3 {
 		groups = "ssi3_ctrl", "ssi3_data";
