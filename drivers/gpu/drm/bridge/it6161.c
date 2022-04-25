@@ -294,6 +294,8 @@ struct it6161 {
 	u8 support_audio;
 	bool hdmi_mode;
 	u8 bAudioChannelEnable;
+
+	struct platform_device *audio_pdev;
 };
 
 struct it6161 *it6161;
@@ -2354,6 +2356,75 @@ static int it6161_parse_dt(struct it6161 *it6161, struct device_node *np)
 	return 0;
 }
 
+int it6161_hdmi_hw_params(struct device *dev, void *data,
+			   struct hdmi_codec_daifmt *fmt,
+			   struct hdmi_codec_params *hparms)
+{
+
+	return 0;
+}
+
+static int audio_startup(struct device *dev, void *data)
+{
+
+	return 0;
+}
+
+static void audio_shutdown(struct device *dev, void *data)
+{
+}
+
+static int it6161_hdmi_i2s_get_dai_id(struct snd_soc_component *component,
+					struct device_node *endpoint)
+{
+	struct of_endpoint of_ep;
+	int ret;
+
+	ret = of_graph_parse_endpoint(endpoint, &of_ep);
+	if (ret < 0)
+		return ret;
+
+	/*
+	 * HDMI sound should be located as reg = <2>
+	 * Then, it is sound port 0
+	 */
+	if (of_ep.port == 2)
+		return 0;
+
+	return -EINVAL;
+}
+
+static const struct hdmi_codec_ops it6161_codec_ops = {
+	.hw_params	= it6161_hdmi_hw_params,
+	.audio_shutdown = audio_shutdown,
+	.audio_startup	= audio_startup,
+	.get_dai_id	= it6161_hdmi_i2s_get_dai_id,
+};
+
+static const struct hdmi_codec_pdata codec_data = {
+	.ops = &it6161_codec_ops,
+	.max_i2s_channels = 2,
+	.i2s = 1,
+};
+
+int it6161_audio_init(struct device *dev, struct it6161 *it6161)
+{
+	it6161->audio_pdev = platform_device_register_data(dev,
+					"hdmi-audio-codec",
+					PLATFORM_DEVID_AUTO,
+					&codec_data,
+					sizeof(codec_data));
+	return PTR_ERR_OR_ZERO(it6161->audio_pdev);
+}
+
+void it6161_audio_exit(struct it6161 *it6161)
+{
+	if (it6161->audio_pdev) {
+		platform_device_unregister(it6161->audio_pdev);
+		it6161->audio_pdev = NULL;
+	}
+}
+
 static int it6161_i2c_probe(struct i2c_client *i2c_mipi_rx,
 			    const struct i2c_device_id *id)
 {
@@ -2433,6 +2504,10 @@ static int it6161_i2c_probe(struct i2c_client *i2c_mipi_rx,
 	if (err)
 		return err;
 
+	err = it6161_audio_init(dev, it6161);
+	if (err)
+		return err;
+
 	return 0;
 }
 
@@ -2443,6 +2518,9 @@ static int it6161_remove(struct i2c_client *i2c_mipi_rx)
 	drm_connector_unregister(&it6161->connector);
 	drm_connector_cleanup(&it6161->connector);
 	drm_bridge_remove(&it6161->bridge);
+
+	it6161_audio_exit(it6161);
+
 	return 0;
 }
 
