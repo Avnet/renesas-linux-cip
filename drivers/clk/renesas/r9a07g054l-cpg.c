@@ -20,7 +20,7 @@
 
 enum clk_ids {
 	/* Core Clock Outputs exported to DT */
-	LAST_DT_CORE_CLK = R9A07G054L_OSCCLK,
+	LAST_DT_CORE_CLK = R9A07G054L_CLK_DRP,
 
 	/* External Input Clocks */
 	CLK_XINCLK,
@@ -252,6 +252,7 @@ static const struct cpg_core_clk r9a07g054l_core_clks[] __initconst = {
 	DEF_DIV("P2", R9A07G054L_CLK_P2, CLK100FIX_CD,
 			DIVPL3A, dtable_3b, CLK_DIVIDER_HIWORD_MASK),
 	DEF_FIXED("AT", R9A07G054L_CLK_AT, CLK800FIX_CD, 1, 2),
+	DEF_FIXED("DRP", R9A07G054L_CLK_DRP, CLK_PLL3_1, 1, 5),
 };
 
 static struct mssr_mod_clk r9a07g054l_mod_clks[] = {
@@ -426,6 +427,22 @@ static struct mssr_mod_clk r9a07g054l_mod_clks[] = {
 	DEF_MOD("csi2",		R9A07G054L_CLK_CSI2,
 				CLK_M2_DIV2,
 				MSSR(25, BIT(0), BIT(0))),
+	DEF_MOD("drp_inclk",		R9A07G054L_CLK_DRP_INTCLK,
+				CLK_XINCLK,
+				MSSR(58, BIT(0), BIT(0))),
+	DEF_MOD("drp_aclk_drp",		R9A07G054L_CLK_DRP_ACLK_DRP,
+				R9A07G054L_CLK_DRP,
+				MSSR(58, BIT(1), BIT(1))),
+	DEF_MOD("drp_mclk",		R9A07G054L_CLK_DRP_MCLK,
+				R9A07G054L_CLK_DRP,
+				MSSR(58, BIT(2), BIT(2))),
+	DEF_MOD("drp_dclkin",		R9A07G054L_CLK_DRP_DCLKIN,
+				CLK800FIX_CD,
+				MSSR(58, BIT(3), BIT(3))),
+	DEF_MOD("drp_aclk",		R9A07G054L_CLK_DRP_ACLK,
+				CLK200FIX_CD,
+				MSSR(58, BIT(4), BIT(4))),
+
 };
 
 static const unsigned int r9a07g054l_crit_mod_clks[] __initconst = {
@@ -444,5 +461,5 @@ const struct cpg_mssr_info r9a07g054l_cpg_info = {
 	/* Module clk */
 	.mod_clks = r9a07g054l_mod_clks,
 	.num_mod_clks = ARRAY_SIZE(r9a07g054l_mod_clks),
-	.num_hw_mod_clks = R9A07G054L_CLK_CSI2 + 1,
+	.num_hw_mod_clks = R9A07G054L_CLK_DRP_ACLK + 1,
 };

@@ -49,6 +49,19 @@
 			reusable;
 			reg = <0x00000000 0x68000000 0x0 0x8000000>;
 		};
+
+		/* device specific region for contiguous allocations */
+		drp_reserved: DRP-AI {
+			reusable;
+			reg = <0x0 0x70000000 0x0 0x10000000>;
+		};
+
+		image_buf0: image_buf@0 {
+			compatible = "shared-dma-pool";
+			reusable;
+			reg = <0x0 0x80000000 0x0 0x02000000>;
+			label = "image_buf0";
+		};
 	};
 
 	mmngr {
@@ -58,6 +71,19 @@
 
 	mmngrbuf {
 		compatible = "renesas,mmngrbuf";
+	};
+
+	vspm_if {
+		compatible = "renesas,vspm_if";
+	};
+
+	udmabuf@0 {
+		compatible = "ikwzm,u-dma-buf";
+		device-name = "udmabuf0";
+		minor-number = <0>;
+		size = <0x2000000>; // 32MiB
+		dma-coherent;
+		memory-region = <&image_buf0>;
 	};
 
 	reg_1p8v: regulator0 {
