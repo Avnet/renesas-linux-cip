@@ -39,8 +39,12 @@
 			pinctrl-names = "default";
 			status = "okay";
 
+			#address-cells = <1>;
+			#size-cells = <0>;
+
 			spidev@0 {
-				compatible = "semtech,sx1301";
+
+				compatible = "spidev";
 				reg = <0>;
 				spi-max-frequency = <2000000>;
 			};
