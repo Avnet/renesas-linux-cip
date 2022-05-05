@@ -221,4 +221,6 @@ source "drivers/slimbus/Kconfig"
 
 source "drivers/udmabuf/Kconfig"
 
+source "drivers/drpai/Kconfig"
+
 endmenu

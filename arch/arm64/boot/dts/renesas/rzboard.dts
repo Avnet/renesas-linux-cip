@@ -733,3 +733,9 @@
 &adc {
 	status = "okay";
 };
+
+&drpai0 {
+	memory-region = <&drp_reserved>;
+	linux-memory-region = < &{/memory@48000000} >;
+	status = "okay";
+};
