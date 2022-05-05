@@ -30,6 +30,15 @@
 #include <media/v4l2-mc.h>
 
 #include <trace/events/vb2.h>
+// #ifdef ENABLE_ISP
+#include <linux/isp_ctrl.h>
+//#define VB2_CORE_DEBUG
+#ifdef VB2_CORE_DEBUG
+#define ispprintk(fmt, arg...)		printk(fmt, ##arg)
+#else
+#define ispprintk(fmt, arg...)
+#endif
+// #endif // ENABLE_ISP
 
 static int debug;
 module_param(debug, int, 0644);
@@ -962,7 +971,16 @@ void vb2_buffer_done(struct vb2_buffer *vb, enum vb2_buffer_state state)
 		return;
 	default:
 		/* Inform any processes that may be waiting for buffers */
-		wake_up(&q->done_wq);
+// #ifdef ENABLE_ISP
+		//wake_up(&q->done_wq);
+		if(ISP_CTRL_RUN==isp_ctrl_get_run_state()){
+			ispprintk("%s: wakeup isp\n", __func__);
+			q_head = &q->done_wq;
+		}else{
+			ispprintk("%s: wakeup without isp\n", __func__);
+			wake_up(&q->done_wq);
+		}
+// #endif // ENABLE_ISP
 		break;
 	}
 }

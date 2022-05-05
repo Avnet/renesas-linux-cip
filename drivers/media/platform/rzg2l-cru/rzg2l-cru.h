@@ -172,6 +172,13 @@ struct rzg2l_cru_dev {
 #define cru_warn(d, fmt, arg...)	dev_warn(d->dev, fmt, ##arg)
 #define cru_err(d, fmt, arg...)		dev_err(d->dev, fmt, ##arg)
 
+//#define DEBUG
+#ifdef DEBUG
+#define dprintk(fmt, arg...)		printk(fmt, ##arg)
+#else
+#define dprintk(fmt, arg...)
+#endif
+
 /**
  * struct rzg2l_cru_group - CRU CSI2 group information
  * @mdev:	media device which represents the group

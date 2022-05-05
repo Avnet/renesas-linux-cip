@@ -33,6 +33,8 @@
 
 #include <trace/events/v4l2.h>
 
+#include <linux/isp_ctrl.h>
+
 /* Zero out the end of the struct pointed to by p.  Everything after, but
  * not including, the specified field is cleared. */
 #define CLEAR_AFTER_FIELD(p, field) \
@@ -1047,7 +1049,13 @@ static int v4l_querycap(const struct v4l2_ioctl_ops *ops,
 	cap->device_caps = vfd->device_caps;
 	cap->capabilities = vfd->device_caps | V4L2_CAP_DEVICE_CAPS;
 
-	ret = ops->vidioc_querycap(file, fh, cap);
+// #ifndef ENABLE_ISP
+	if(ISP_CTRL_RUN==isp_ctrl_get_run_state()){
+		ret = isp_ctrl_querycap(ops->vidioc_querycap, file, fh, cap);
+	}else{
+		ret = ops->vidioc_querycap(file, fh, cap);
+	}
+// #endif // ENABLE_ISP
 
 	cap->capabilities |= V4L2_CAP_EXT_PIX_FORMAT;
 	/*
@@ -1062,6 +1070,18 @@ static int v4l_querycap(const struct v4l2_ioctl_ops *ops,
 	return ret;
 }
 
+// #ifdef ENABLE_ISP
+static int v4l_g_input(const struct v4l2_ioctl_ops *ops,
+				struct file *file, void *fh, void *arg)
+{
+	if(ISP_CTRL_RUN==isp_ctrl_get_run_state()){
+		return isp_ctrl_g_input(ops->vidioc_g_input, file, fh, arg);
+	}else{
+		return ops->vidioc_g_input(file, fh, arg);
+	}
+}
+// #endif // ENABLE_ISP
+
 static int v4l_s_input(const struct v4l2_ioctl_ops *ops,
 				struct file *file, void *fh, void *arg)
 {
@@ -1071,7 +1091,14 @@ static int v4l_s_input(const struct v4l2_ioctl_ops *ops,
 	ret = v4l_enable_media_source(vfd);
 	if (ret)
 		return ret;
-	return ops->vidioc_s_input(file, fh, *(unsigned int *)arg);
+
+// #ifndef ENABLE_ISP
+	if(ISP_CTRL_RUN==isp_ctrl_get_run_state()){
+		return isp_ctrl_s_input(ops->vidioc_s_input, file, fh, *(unsigned int *)arg);
+	}else{
+		return ops->vidioc_s_input(file, fh, *(unsigned int *)arg);
+	}
+// #endif // ENABLE_ISP
 }
 
 static int v4l_s_output(const struct v4l2_ioctl_ops *ops,
@@ -1120,7 +1147,13 @@ static int v4l_enuminput(const struct v4l2_ioctl_ops *ops,
 	if (is_valid_ioctl(vfd, VIDIOC_S_STD))
 		p->capabilities |= V4L2_IN_CAP_STD;
 
-	return ops->vidioc_enum_input(file, fh, p);
+// #ifndef ENABLE_ISP
+	if(ISP_CTRL_RUN==isp_ctrl_get_run_state()){
+		return isp_ctrl_enuminput(ops->vidioc_enum_input, file, fh, p);
+	}else{
+		return ops->vidioc_enum_input(file, fh, p);
+	}
+// #endif // ENABLE_ISP
 }
 
 static int v4l_enumoutput(const struct v4l2_ioctl_ops *ops,
@@ -1372,7 +1405,13 @@ static int v4l_enum_fmt(const struct v4l2_ioctl_ops *ops,
 	case V4L2_BUF_TYPE_VIDEO_CAPTURE:
 		if (unlikely(!ops->vidioc_enum_fmt_vid_cap))
 			break;
-		ret = ops->vidioc_enum_fmt_vid_cap(file, fh, arg);
+// #ifndef ENABLE_ISP
+		if(ISP_CTRL_RUN==isp_ctrl_get_run_state()){
+			ret = isp_ctrl_enum_fmt(ops->vidioc_enum_fmt_vid_cap, file, fh, arg);
+		}else{
+			ret = ops->vidioc_enum_fmt_vid_cap(file, fh, arg);
+		}
+// #endif // ENABLE_ISP
 		break;
 	case V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE:
 		if (unlikely(!ops->vidioc_enum_fmt_vid_cap_mplane))
@@ -1469,7 +1508,13 @@ static int v4l_g_fmt(const struct v4l2_ioctl_ops *ops,
 		if (unlikely(!ops->vidioc_g_fmt_vid_cap))
 			break;
 		p->fmt.pix.priv = V4L2_PIX_FMT_PRIV_MAGIC;
-		ret = ops->vidioc_g_fmt_vid_cap(file, fh, arg);
+// #ifndef ENABLE_ISP
+		if(ISP_CTRL_RUN==isp_ctrl_get_run_state()){
+			ret = isp_ctrl_g_fmt(ops->vidioc_g_fmt_vid_cap, file, fh, arg);
+		}else{
+			ret = ops->vidioc_g_fmt_vid_cap(file, fh, arg);
+		}
+// #endif // ENABLE_ISP
 		/* just in case the driver zeroed it again */
 		p->fmt.pix.priv = V4L2_PIX_FMT_PRIV_MAGIC;
 		if (vfd->vfl_type == VFL_TYPE_TOUCH)
@@ -1529,7 +1574,14 @@ static int v4l_s_fmt(const struct v4l2_ioctl_ops *ops,
 		if (unlikely(!ops->vidioc_s_fmt_vid_cap))
 			break;
 		CLEAR_AFTER_FIELD(p, fmt.pix);
+
+// #ifndef ENABLE_ISP
+	if(ISP_CTRL_RUN==isp_ctrl_get_run_state()){
+		ret = isp_ctrl_s_fmt(ops->vidioc_s_fmt_vid_cap, file, fh, arg);
+	}else{
 		ret = ops->vidioc_s_fmt_vid_cap(file, fh, arg);
+	}
+// #endif // ENABLE_ISP
 		/* just in case the driver zeroed it again */
 		p->fmt.pix.priv = V4L2_PIX_FMT_PRIV_MAGIC;
 		if (vfd->vfl_type == VFL_TYPE_TOUCH)
@@ -1618,7 +1670,13 @@ static int v4l_try_fmt(const struct v4l2_ioctl_ops *ops,
 		if (unlikely(!ops->vidioc_try_fmt_vid_cap))
 			break;
 		CLEAR_AFTER_FIELD(p, fmt.pix);
-		ret = ops->vidioc_try_fmt_vid_cap(file, fh, arg);
+// #ifndef ENABLE_ISP
+		if(ISP_CTRL_RUN==isp_ctrl_get_run_state()){
+			ret = isp_ctrl_try_fmt(ops->vidioc_try_fmt_vid_cap, file, fh, arg);
+		}else{
+			ret = ops->vidioc_try_fmt_vid_cap(file, fh, arg);
+		}
+// #endif // ENABLE_ISP
 		/* just in case the driver zeroed it again */
 		p->fmt.pix.priv = V4L2_PIX_FMT_PRIV_MAGIC;
 		return ret;
@@ -1692,13 +1750,26 @@ static int v4l_try_fmt(const struct v4l2_ioctl_ops *ops,
 static int v4l_streamon(const struct v4l2_ioctl_ops *ops,
 				struct file *file, void *fh, void *arg)
 {
-	return ops->vidioc_streamon(file, fh, *(unsigned int *)arg);
+// #ifndef ENABLE_ISP
+	if(ISP_CTRL_RUN==isp_ctrl_get_run_state()){
+		return isp_ctrl_streamon(ops->vidioc_streamon, file, fh, *(unsigned int *)arg);
+	}else{
+		return ops->vidioc_streamon(file, fh, *(unsigned int *)arg);
+	}
+
+// #endif // ENABLE_ISP
 }
 
 static int v4l_streamoff(const struct v4l2_ioctl_ops *ops,
 				struct file *file, void *fh, void *arg)
 {
-	return ops->vidioc_streamoff(file, fh, *(unsigned int *)arg);
+// #ifndef ENABLE_ISP
+	if(ISP_CTRL_RUN==isp_ctrl_get_run_state()){
+		return isp_ctrl_streamoff(ops->vidioc_streamoff, file, fh, *(unsigned int *)arg);
+	}else{
+		return ops->vidioc_streamoff(file, fh, *(unsigned int *)arg);
+	}
+// #endif // ENABLE_ISP
 }
 
 static int v4l_g_tuner(const struct v4l2_ioctl_ops *ops,
@@ -1884,7 +1955,13 @@ static int v4l_reqbufs(const struct v4l2_ioctl_ops *ops,
 
 	CLEAR_AFTER_FIELD(p, memory);
 
-	return ops->vidioc_reqbufs(file, fh, p);
+// #ifndef ENABLE_ISP
+	if(ISP_CTRL_RUN==isp_ctrl_get_run_state()){
+		return isp_ctrl_reqbufs(ops->vidioc_reqbufs, file, fh, p);
+	}else{
+		return ops->vidioc_reqbufs(file, fh, p);
+	}
+// #endif // ENABLE_ISP
 }
 
 static int v4l_querybuf(const struct v4l2_ioctl_ops *ops,
@@ -1893,7 +1970,13 @@ static int v4l_querybuf(const struct v4l2_ioctl_ops *ops,
 	struct v4l2_buffer *p = arg;
 	int ret = check_fmt(file, p->type);
 
-	return ret ? ret : ops->vidioc_querybuf(file, fh, p);
+// #ifndef ENABLE_ISP
+	if(ISP_CTRL_RUN==isp_ctrl_get_run_state()){
+		return ret ? ret : isp_ctrl_querybuf(ops->vidioc_querybuf, file, fh, p);
+	}else{
+		return ret ? ret : ops->vidioc_querybuf(file, fh, p);
+	}
+// #endif // ENABLE_ISP
 }
 
 static int v4l_qbuf(const struct v4l2_ioctl_ops *ops,
@@ -1902,8 +1985,26 @@ static int v4l_qbuf(const struct v4l2_ioctl_ops *ops,
 	struct v4l2_buffer *p = arg;
 	int ret = check_fmt(file, p->type);
 
-	return ret ? ret : ops->vidioc_qbuf(file, fh, p);
+// #ifndef ENABLE_ISP
+	if(ISP_CTRL_RUN==isp_ctrl_get_run_state()){
+		return ret ? ret : isp_ctrl_qbuf(ops->vidioc_qbuf, file, fh, p);
+	}else{
+		return ret ? ret : ops->vidioc_qbuf(file, fh, p);
+	}
+// #endif // ENABLE_ISP
 }
+
+// #ifdef ENABLE_ISP
+static int v4l_expbuf(const struct v4l2_ioctl_ops *ops,
+				struct file *file, void *fh, void *arg)
+{
+	if(ISP_CTRL_RUN==isp_ctrl_get_run_state()){
+		return isp_ctrl_expbuf(ops->vidioc_expbuf, file, fh, arg);
+	}else{
+		return ops->vidioc_expbuf(file, fh, arg);
+	}
+}
+// #endif // ENABLE_ISP
 
 static int v4l_dqbuf(const struct v4l2_ioctl_ops *ops,
 				struct file *file, void *fh, void *arg)
@@ -1911,7 +2012,13 @@ static int v4l_dqbuf(const struct v4l2_ioctl_ops *ops,
 	struct v4l2_buffer *p = arg;
 	int ret = check_fmt(file, p->type);
 
-	return ret ? ret : ops->vidioc_dqbuf(file, fh, p);
+// #ifndef ENABLE_ISP
+	if(ISP_CTRL_RUN==isp_ctrl_get_run_state()){
+		return ret ? ret : isp_ctrl_dqbuf(ops->vidioc_dqbuf, file, fh, p);
+	}else{
+		return ret ? ret : ops->vidioc_dqbuf(file, fh, p);
+	}
+// #endif // ENABLE_ISP
 }
 
 static int v4l_create_bufs(const struct v4l2_ioctl_ops *ops,
@@ -1927,7 +2034,13 @@ static int v4l_create_bufs(const struct v4l2_ioctl_ops *ops,
 
 	v4l_sanitize_format(&create->format);
 
-	ret = ops->vidioc_create_bufs(file, fh, create);
+// #ifndef ENABLE_ISP
+	if(ISP_CTRL_RUN==isp_ctrl_get_run_state()){
+		ret = isp_ctrl_create_bufs(ops->vidioc_create_bufs, file, fh, create);
+	}else{
+		ret = ops->vidioc_create_bufs(file, fh, create);
+	}
+// #endif // ENABLE_ISP
 
 	if (create->format.type == V4L2_BUF_TYPE_VIDEO_CAPTURE ||
 	    create->format.type == V4L2_BUF_TYPE_VIDEO_OUTPUT)
@@ -1942,7 +2055,13 @@ static int v4l_prepare_buf(const struct v4l2_ioctl_ops *ops,
 	struct v4l2_buffer *b = arg;
 	int ret = check_fmt(file, b->type);
 
-	return ret ? ret : ops->vidioc_prepare_buf(file, fh, b);
+// #ifndef ENABLE_ISP
+	if(ISP_CTRL_RUN==isp_ctrl_get_run_state()){
+		return ret ? ret : isp_ctrl_prepare_buf(ops->vidioc_prepare_buf, file, fh, b);
+	}else{
+		return ret ? ret : ops->vidioc_prepare_buf(file, fh, b);
+	}
+// #endif // ENABLE_ISP
 }
 
 static int v4l_g_parm(const struct v4l2_ioctl_ops *ops,
@@ -2131,6 +2250,7 @@ static int v4l_s_ext_ctrls(const struct v4l2_ioctl_ops *ops,
 	struct v4l2_fh *vfh =
 		test_bit(V4L2_FL_USES_V4L2_FH, &vfd->flags) ? fh : NULL;
 
+	dprintk("%s: start ops->vidioc_s_ext_ctrls = %p\n", __func__, ops->vidioc_s_ext_ctrls);
 	p->error_idx = p->count;
 	if (vfh && vfh->ctrl_handler)
 		return v4l2_s_ext_ctrls(vfh, vfh->ctrl_handler, p);
@@ -2181,7 +2301,14 @@ static int v4l_g_selection(const struct v4l2_ioctl_ops *ops,
 		p->type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
 	else if (p->type == V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE)
 		p->type = V4L2_BUF_TYPE_VIDEO_OUTPUT;
-	ret = ops->vidioc_g_selection(file, fh, p);
+
+// #ifndef ENABLE_ISP
+	if(ISP_CTRL_RUN==isp_ctrl_get_run_state()){
+		ret = isp_ctrl_g_selection(ops->vidioc_g_selection, file, fh, p);
+	}else{
+		ret = ops->vidioc_g_selection(file, fh, p);
+	}
+// #endif // ENABLE_ISP
 	p->type = old_type;
 	return ret;
 }
@@ -2197,7 +2324,14 @@ static int v4l_s_selection(const struct v4l2_ioctl_ops *ops,
 		p->type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
 	else if (p->type == V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE)
 		p->type = V4L2_BUF_TYPE_VIDEO_OUTPUT;
-	ret = ops->vidioc_s_selection(file, fh, p);
+
+// #ifndef ENABLE_ISP
+	if(ISP_CTRL_RUN==isp_ctrl_get_run_state()){
+		ret = isp_ctrl_s_selection(ops->vidioc_s_selection, file, fh, p);
+	}else{
+		ret = ops->vidioc_s_selection(file, fh, p);
+	}
+// #endif // ENABLE_ISP
 	p->type = old_type;
 	return ret;
 }
@@ -2318,7 +2452,13 @@ static int v4l_log_status(const struct v4l2_ioctl_ops *ops,
 	if (vfd->v4l2_dev)
 		pr_info("%s: =================  START STATUS  =================\n",
 			vfd->v4l2_dev->name);
-	ret = ops->vidioc_log_status(file, fh);
+// #ifndef ENABLE_ISP
+	if(ISP_CTRL_RUN==isp_ctrl_get_run_state()){
+		ret = isp_ctrl_log_status(ops->vidioc_log_status, file, fh);
+	}else{
+		ret = ops->vidioc_log_status(file, fh);
+	}
+// #endif // ENABLE_ISP
 	if (vfd->v4l2_dev)
 		pr_info("%s: ==================  END STATUS  ==================\n",
 			vfd->v4l2_dev->name);
@@ -2433,13 +2573,25 @@ static int v4l_dqevent(const struct v4l2_ioctl_ops *ops,
 static int v4l_subscribe_event(const struct v4l2_ioctl_ops *ops,
 				struct file *file, void *fh, void *arg)
 {
-	return ops->vidioc_subscribe_event(fh, arg);
+// #ifndef ENABLE_ISP
+	if(ISP_CTRL_RUN==isp_ctrl_get_run_state()){
+		return isp_ctrl_subscribe_event(ops->vidioc_subscribe_event, fh, arg);
+	}else{
+		return ops->vidioc_subscribe_event(fh, arg);
+	}
+// #endif // ENABLE_ISP
 }
 
 static int v4l_unsubscribe_event(const struct v4l2_ioctl_ops *ops,
 				struct file *file, void *fh, void *arg)
 {
-	return ops->vidioc_unsubscribe_event(fh, arg);
+// #ifndef ENABLE_ISP
+	if(ISP_CTRL_RUN==isp_ctrl_get_run_state()){
+		return isp_ctrl_unsubscribe_event(ops->vidioc_unsubscribe_event, fh, arg);
+	}else{
+		return ops->vidioc_unsubscribe_event(fh, arg);
+	}
+// #endif // ENABLE_ISP
 }
 
 static int v4l_g_sliced_vbi_cap(const struct v4l2_ioctl_ops *ops,
@@ -2562,11 +2714,15 @@ struct v4l2_ioctl_info {
 
 DEFINE_V4L_STUB_FUNC(g_fbuf)
 DEFINE_V4L_STUB_FUNC(s_fbuf)
-DEFINE_V4L_STUB_FUNC(expbuf)
+// #ifndef ENABLE_ISP
+//DEFINE_V4L_STUB_FUNC(expbuf)
+// #endif // ENABLE_ISP
 DEFINE_V4L_STUB_FUNC(g_std)
 DEFINE_V4L_STUB_FUNC(g_audio)
 DEFINE_V4L_STUB_FUNC(s_audio)
-DEFINE_V4L_STUB_FUNC(g_input)
+// #ifndef ENABLE_ISP
+//DEFINE_V4L_STUB_FUNC(g_input)
+// #endif // ENABLE_ISP
 DEFINE_V4L_STUB_FUNC(g_edid)
 DEFINE_V4L_STUB_FUNC(s_edid)
 DEFINE_V4L_STUB_FUNC(g_output)
@@ -2600,7 +2756,11 @@ static struct v4l2_ioctl_info v4l2_ioctls[] = {
 	IOCTL_INFO(VIDIOC_S_FBUF, v4l_stub_s_fbuf, v4l_print_framebuffer, INFO_FL_PRIO),
 	IOCTL_INFO(VIDIOC_OVERLAY, v4l_overlay, v4l_print_u32, INFO_FL_PRIO),
 	IOCTL_INFO(VIDIOC_QBUF, v4l_qbuf, v4l_print_buffer, INFO_FL_QUEUE),
-	IOCTL_INFO(VIDIOC_EXPBUF, v4l_stub_expbuf, v4l_print_exportbuffer, INFO_FL_QUEUE | INFO_FL_CLEAR(v4l2_exportbuffer, flags)),
+// #ifndef ENABLE_ISP
+//	IOCTL_INFO(VIDIOC_EXPBUF, v4l_stub_expbuf, v4l_print_exportbuffer, INFO_FL_QUEUE | INFO_FL_CLEAR(v4l2_exportbuffer, flags)),
+// #else
+	IOCTL_INFO(VIDIOC_EXPBUF, v4l_expbuf, v4l_print_exportbuffer, INFO_FL_QUEUE | INFO_FL_CLEAR(v4l2_exportbuffer, flags)),
+// #endif // ENABLE_ISP
 	IOCTL_INFO(VIDIOC_DQBUF, v4l_dqbuf, v4l_print_buffer, INFO_FL_QUEUE),
 	IOCTL_INFO(VIDIOC_STREAMON, v4l_streamon, v4l_print_buftype, INFO_FL_PRIO | INFO_FL_QUEUE),
 	IOCTL_INFO(VIDIOC_STREAMOFF, v4l_streamoff, v4l_print_buftype, INFO_FL_PRIO | INFO_FL_QUEUE),
@@ -2618,7 +2778,11 @@ static struct v4l2_ioctl_info v4l2_ioctls[] = {
 	IOCTL_INFO(VIDIOC_S_AUDIO, v4l_stub_s_audio, v4l_print_audio, INFO_FL_PRIO),
 	IOCTL_INFO(VIDIOC_QUERYCTRL, v4l_queryctrl, v4l_print_queryctrl, INFO_FL_CTRL | INFO_FL_CLEAR(v4l2_queryctrl, id)),
 	IOCTL_INFO(VIDIOC_QUERYMENU, v4l_querymenu, v4l_print_querymenu, INFO_FL_CTRL | INFO_FL_CLEAR(v4l2_querymenu, index)),
-	IOCTL_INFO(VIDIOC_G_INPUT, v4l_stub_g_input, v4l_print_u32, 0),
+// #ifndef ENABLE_ISP
+//	IOCTL_INFO(VIDIOC_G_INPUT, v4l_stub_g_input, v4l_print_u32, 0),
+// #else
+	IOCTL_INFO(VIDIOC_G_INPUT, v4l_g_input, v4l_print_u32, 0),
+// #endif // ENABLE_ISP
 	IOCTL_INFO(VIDIOC_S_INPUT, v4l_s_input, v4l_print_u32, INFO_FL_PRIO),
 	IOCTL_INFO(VIDIOC_G_EDID, v4l_stub_g_edid, v4l_print_edid, INFO_FL_ALWAYS_COPY),
 	IOCTL_INFO(VIDIOC_S_EDID, v4l_stub_s_edid, v4l_print_edid, INFO_FL_PRIO | INFO_FL_ALWAYS_COPY),

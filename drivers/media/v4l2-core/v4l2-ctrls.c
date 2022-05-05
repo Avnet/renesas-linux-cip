@@ -28,6 +28,10 @@
 #include <media/v4l2-event.h>
 #include <media/v4l2-dev.h>
 
+// #ifdef ENABLE_ISP
+#include <linux/isp_ctrl.h>
+#include <uapi/linux/renesas-v4l2-controls.h>
+// #endif // ENABLE_ISP
 #define has_op(master, op) \
 	(master->ops && master->ops->op)
 #define call_op(master, op) \
@@ -2656,6 +2660,7 @@ int v4l2_query_ext_ctrl(struct v4l2_ctrl_handler *hdl, struct v4l2_query_ext_ctr
 	struct v4l2_ctrl_ref *ref;
 	struct v4l2_ctrl *ctrl;
 
+	dprintk("%s: start", __func__);
 	if (hdl == NULL)
 		return -EINVAL;
 
@@ -2977,6 +2982,7 @@ int v4l2_g_ext_ctrls(struct v4l2_ctrl_handler *hdl, struct v4l2_ext_controls *cs
 	int i, j;
 	bool def_value;
 
+	dprintk("%s: start\n", __func__);
 	def_value = (cs->which == V4L2_CTRL_WHICH_DEF_VAL);
 
 	cs->error_idx = cs->count;
@@ -3033,8 +3039,16 @@ int v4l2_g_ext_ctrls(struct v4l2_ctrl_handler *hdl, struct v4l2_ext_controls *cs
 			u32 idx = i;
 
 			do {
-				ret = ctrl_to_user(cs->controls + idx,
-						   helpers[idx].ctrl);
+// #ifndef ENABLE_ISP
+				if(ISP_CTRL_RUN==isp_ctrl_get_run_state()){
+					ret = isp_ctrl_g_ext_ctrl(cs->controls + idx);
+				}else{
+					ret = ctrl_to_user(cs->controls + idx,
+							   helpers[idx].ctrl);
+				}
+//				ret = ctrl_to_user(cs->controls + idx,
+//						   helpers[idx].ctrl);
+// #endif // ENABLE_ISP
 				idx = helpers[idx].next;
 			} while (!ret && idx);
 		}
@@ -3126,7 +3140,9 @@ static int try_or_set_cluster(struct v4l2_fh *fh, struct v4l2_ctrl *master,
 	bool update_flag;
 	int ret;
 	int i;
-
+//#ifdef ENABLE_ISP
+	bool cru_flag=0;
+//#endif
 	/* Go through the cluster and either validate the new value or
 	   (if no new value was set), copy the current value to the new
 	   value, ensuring a consistent view for the control ops when
@@ -3147,12 +3163,38 @@ static int try_or_set_cluster(struct v4l2_fh *fh, struct v4l2_ctrl *master,
 			return -EBUSY;
 	}
 
+	dprintk("%s: has_op(master, op)=%d\n", __func__, has_op(master, try_ctrl));
 	ret = call_op(master, try_ctrl);
 
+//#ifdef ENABLE_ISP
 	/* Don't set if there is no change */
-	if (ret || !set || !cluster_changed(master))
-		return ret;
-	ret = call_op(master, s_ctrl);
+	if(ISP_CTRL_RUN==isp_ctrl_get_run_state()){
+		if(fh != NULL){
+			if(0==strncmp(fh->vdev->name,"CRU output",10)){
+				cru_flag = 1;
+			}
+		}
+		if(cru_flag){
+			if (ret || !set)
+				return ret;
+			master->cluster[0]->has_changed = true;
+			ret = isp_ctrl_s_ctrl(master->ops->s_ctrl, master);
+		}else{
+			if (ret || !set || !cluster_changed(master))
+				return ret;
+			ret = call_op(master, s_ctrl);
+		}
+	}else{
+		if (ret || !set || !cluster_changed(master))
+			return ret;
+		ret = call_op(master, s_ctrl);
+	}
+//#else
+//	if (ret || !set || !cluster_changed(master))
+//		return ret;
+//	ret = call_op(master, s_ctrl);
+//#endif //ENABLE_ISP
+	dprintk("%s: ret = %d\n", __func__, ret);
 	if (ret)
 		return ret;
 

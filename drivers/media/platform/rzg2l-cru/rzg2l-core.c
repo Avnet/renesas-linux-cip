@@ -21,6 +21,11 @@
 #include <media/v4l2-mc.h>
 
 #include "rzg2l-cru.h"
+//#ifdef ENABLE_ISP
+#include <linux/simple_isp.h>
+#include <linux/simple_isp_default.h>
+#include <uapi/linux/renesas-v4l2-controls.h>
+//#endif //ENABLE_ISP
 
 #define v4l2_dev_to_cru(d)	container_of(d, struct rzg2l_cru_dev, v4l2_dev)
 
@@ -462,6 +467,7 @@ static int rzg2l_cru_s_ctrl(struct v4l2_ctrl *ctrl)
 						 ctrl_handler);
 	int ret;
 
+	dprintk("%s: start\n", __func__);
 	switch (ctrl->id) {
 	case V4L2_CID_MIN_BUFFERS_FOR_CAPTURE:
 		if ((cru->state == STOPPED) || (cru->state == STOPPING))
@@ -475,11 +481,177 @@ static int rzg2l_cru_s_ctrl(struct v4l2_ctrl *ctrl)
 		break;
 	}
 
+	dprintk("%s: finish\n", __func__);
 	return ret;
 }
 
 static const struct v4l2_ctrl_ops rzg2l_cru_ctrl_ops = {
 	.s_ctrl = rzg2l_cru_s_ctrl,
+};
+
+static struct v4l2_ctrl_config rzg2l_cru_ctrls[] = {
+	{
+			.ops    = &rzg2l_cru_ctrl_ops,
+			.id     = V4L2_CID_RZ_ISP_IN_FMT,
+			.name   = "In Format",
+			.type   = V4L2_CTRL_TYPE_INTEGER,
+			.min    = ISP_LIMIT_IN_FMT_MIN,
+			.max    = ISP_LIMIT_IN_FMT_MAX,
+			.step   = ISP_LIMIT_IN_FMT_STEP,
+			.def    = ISP_LIMIT_IN_FMT_DEFAULT,
+	},
+	{
+			.ops    = &rzg2l_cru_ctrl_ops,
+			.id     = V4L2_CID_RZ_ISP_FRM_INTERVAL,
+			.name   = "Frame Interval",
+			.type   = V4L2_CTRL_TYPE_INTEGER,
+			.min    = ISP_LIMIT_FRM_INTERVAL_MIN,
+			.max    = ISP_LIMIT_FRM_INTERVAL_MAX,
+			.step   = ISP_LIMIT_FRM_INTERVAL_STEP,
+			.def    = ISP_LIMIT_FRM_INTERVAL_DEFAULT,
+	},
+	{
+			.ops    = &rzg2l_cru_ctrl_ops,
+			.id     = V4L2_CID_RZ_ISP_BL,
+			.name   = "Black Level",
+			.type   = V4L2_CTRL_TYPE_INTEGER,
+			.min    = ISP_LIMIT_BL_MIN,
+			.max    = ISP_LIMIT_BL_MAX,
+			.step   = ISP_LIMIT_BL_STEP,
+			.def    = ISP_LIMIT_BL_DEFAULT,
+	},
+	{
+			.ops    = &rzg2l_cru_ctrl_ops,
+			.id     = V4L2_CID_RZ_ISP_WB,
+			.name   = "White Balance",
+			.type   = V4L2_CTRL_TYPE_INTEGER,
+			.min    = ISP_LIMIT_WB_MIN,
+			.max    = ISP_LIMIT_WB_MAX,
+			.step   = ISP_LIMIT_WB_STEP,
+			.def    = ISP_LIMIT_WB_DEFAULT,
+	},
+	{
+			.ops    = &rzg2l_cru_ctrl_ops,
+			.id     = V4L2_CID_RZ_ISP_GAMMA,
+			.name   = "Gamma",
+			.type   = V4L2_CTRL_TYPE_INTEGER,
+			.min    = ISP_LIMIT_GAMMA_MIN,
+			.max    = ISP_LIMIT_GAMMA_MAX,
+			.step   = ISP_LIMIT_GAMMA_STEP,
+			.def    = ISP_LIMIT_GAMMA_DEFAULT,
+	},
+	{
+			.ops    = &rzg2l_cru_ctrl_ops,
+			.id     = V4L2_CID_RZ_ISP_CMX,
+			.name   = "Color Matrix",
+			.type   = V4L2_CTRL_TYPE_INTEGER,
+			.min    = ISP_LIMIT_CMX_MIN,
+			.max    = ISP_LIMIT_CMX_MAX,
+			.step   = ISP_LIMIT_CMX_STEP,
+			.def    = ISP_LIMIT_CMX_DEFAULT,
+	},
+	{
+			.ops    = &rzg2l_cru_ctrl_ops,
+			.id     = V4L2_CID_RZ_ISP_2DNR,
+			.name   = "2D Noise Reduction",
+			.type   = V4L2_CTRL_TYPE_INTEGER,
+			.min    = ISP_LIMIT_2DNR_MIN,
+			.max    = ISP_LIMIT_2DNR_MAX,
+			.step   = ISP_LIMIT_2DNR_STEP,
+			.def    = ISP_LIMIT_2DNR_DEFAULT,
+	},
+	{
+			.ops    = &rzg2l_cru_ctrl_ops,
+			.id     = V4L2_CID_RZ_ISP_3DNR,
+			.name   = "3D Noize Reduction",
+			.type   = V4L2_CTRL_TYPE_INTEGER,
+			.min    = ISP_LIMIT_3DNR_MIN,
+			.max    = ISP_LIMIT_3DNR_MAX,
+			.step   = ISP_LIMIT_3DNR_STEP,
+			.def    = ISP_LIMIT_3DNR_DEFAULT,
+	},
+	{
+			.ops    = &rzg2l_cru_ctrl_ops,
+			.id     = V4L2_CID_RZ_ISP_EMP,
+			.name   = "EMP",
+			.type   = V4L2_CTRL_TYPE_INTEGER,
+			.min    = ISP_LIMIT_EMP_MIN,
+			.max    = ISP_LIMIT_EMP_MAX,
+			.step   = ISP_LIMIT_EMP_STEP,
+			.def    = ISP_LIMIT_EMP_DEFAULT,
+	},
+	{
+			.ops    = &rzg2l_cru_ctrl_ops,
+			.id     = V4L2_CID_RZ_ISP_DRP_LV,
+			.name   = "DRP Priority Level",
+			.type   = V4L2_CTRL_TYPE_INTEGER,
+			.min    = ISP_LIMIT_DRP_LV_MIN,
+			.max    = ISP_LIMIT_DRP_LV_MAX,
+			.step   = ISP_LIMIT_DRP_LV_STEP,
+			.def    = ISP_LIMIT_DRP_LV_DEFAULT,
+	},
+	{
+			.ops    = &rzg2l_cru_ctrl_ops,
+			.id     = V4L2_CID_RZ_ISP_AE,
+			.name   = "AE On Off",
+			.type   = V4L2_CTRL_TYPE_INTEGER,
+			.min    = ISP_LIMIT_AE_MIN,
+			.max    = ISP_LIMIT_AE_MAX,
+			.step   = ISP_LIMIT_AE_STEP,
+			.def    = ISP_LIMIT_AE_DEFAULT,
+	},
+	{
+			.ops    = &rzg2l_cru_ctrl_ops,
+			.id     = V4L2_CID_RZ_ISP_EXPOSE_LV,
+			.name   = "Expose Level",
+			.type   = V4L2_CTRL_TYPE_INTEGER,
+			.min    = ISP_LIMIT_EXPOSE_LV_MIN,
+			.max    = ISP_LIMIT_EXPOSE_LV_MAX,
+			.step   = ISP_LIMIT_EXPOSE_LV_STEP,
+			.def    = ISP_LIMIT_EXPOSE_LV_DEFAULT,
+	},
+	{
+			.ops    = &rzg2l_cru_ctrl_ops,
+			.id     = V4L2_CID_RZ_ISP_T_BL,
+			.name   = "Target Black Level",
+			.type   = V4L2_CTRL_TYPE_INTEGER,
+			.min    = ISP_LIMIT_T_BL_MIN,
+			.max    = ISP_LIMIT_T_BL_MAX,
+			.step   = ISP_LIMIT_T_BL_STEP,
+			.def    = ISP_LIMIT_T_BL_DEFAULT,
+	},
+	{
+			.ops    = &rzg2l_cru_ctrl_ops,
+			.id     = V4L2_CID_RZ_ISP_THRESHOLD,
+			.name   = "Threshold",
+			.type   = V4L2_CTRL_TYPE_INTEGER,
+			.min    = ISP_LIMIT_THRESHOLD_MIN,
+			.max    = ISP_LIMIT_THRESHOLD_MAX,
+			.step   = ISP_LIMIT_THRESHOLD_STEP,
+			.def    = ISP_LIMIT_THRESHOLD_DEFAULT,
+	},
+	{
+			.ops    = &rzg2l_cru_ctrl_ops,
+			.id     = V4L2_CID_RZ_ISP_ALL,
+			.name   = "ALL Parameter",
+			.type   = V4L2_CTRL_COMPOUND_TYPES,
+			.min    = ISP_LIMIT_ALL_MIN,
+			.max    = ISP_LIMIT_ALL_MAX,
+			.step   = ISP_LIMIT_ALL_STEP,
+			.def    = ISP_LIMIT_ALL_DEFAULT,
+			.flags = V4L2_CTRL_FLAG_HAS_PAYLOAD,
+			.dims[0] = V4L2_RZ_ISP_ALL_DIMS,
+	},
+	{
+			.ops    = &rzg2l_cru_ctrl_ops,
+			.id     = V4L2_CID_RZ_ISP_AWB,
+			.name   = "Auto Whhite Balance",
+			.type   = V4L2_CTRL_TYPE_INTEGER,
+			.min    = ISP_LIMIT_AWB_MIN,
+			.max    = ISP_LIMIT_AWB_MAX,
+			.step   = ISP_LIMIT_AWB_STEP,
+			.def    = ISP_LIMIT_AWB_DEFAULT,
+	}
 };
 
 static int rzg2l_cru_probe(struct platform_device *pdev)
@@ -488,6 +660,9 @@ static int rzg2l_cru_probe(struct platform_device *pdev)
 	struct resource *mem;
 	int irq, ret;
 	struct v4l2_ctrl *ctrl;
+// #ifdef ENABLE_ISP
+	unsigned char i;
+// #endif //ENABLE_ISP
 
 	cru = devm_kzalloc(&pdev->dev, sizeof(*cru), GFP_KERNEL);
 	if (!cru)
@@ -529,10 +704,18 @@ static int rzg2l_cru_probe(struct platform_device *pdev)
 		goto error_dma_unregister;
 
 	/* Add the control about minimum amount of buffers */
-	v4l2_ctrl_handler_init(&cru->ctrl_handler, 1);
+// #ifdef ENABLE_ISP
+	v4l2_ctrl_handler_init(&cru->ctrl_handler, 1 + ARRAY_SIZE(rzg2l_cru_ctrls));
+//	v4l2_ctrl_handler_init(&cru->ctrl_handler, 1);
+// #endif //ENABLE_ISP
 	ctrl = v4l2_ctrl_new_std(&cru->ctrl_handler, &rzg2l_cru_ctrl_ops,
 			  V4L2_CID_MIN_BUFFERS_FOR_CAPTURE,
 			  1, HW_BUFFER_MAX, 1, HW_BUFFER_DEFAULT);
+
+// #ifdef ENABLE_ISP
+	for (i = 0; i < ARRAY_SIZE(rzg2l_cru_ctrls); i++)
+			v4l2_ctrl_new_custom(&cru->ctrl_handler, &rzg2l_cru_ctrls[i], NULL);
+// #endif //ENABLE_ISP
 
 	ctrl->flags &= ~V4L2_CTRL_FLAG_READ_ONLY;
 
