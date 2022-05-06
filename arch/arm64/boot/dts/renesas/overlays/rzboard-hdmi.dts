@@ -17,17 +17,42 @@
 
 #include <dt-bindings/pinctrl/pinctrl-rzg2l.h>
 
-/* 40-pin extended GPIO, expanded into UART, SPI, I2C, PWM and other interfaces */
+&du {
+	status = "okay";
+};
 
-&pinctrl {
-	scif2_pins: scif2 {
-		groups = "scif2_data_e";
-		function = "scif2";
+&it6161 {
+	status = "okay";
+	ports {
+		#address-cells = <1>;
+		#size-cells = <0>;
+
+		port@0 {
+			reg = <0>;
+			it6161_in: endpoint@0 {
+				remote-endpoint = <&dsi0_out>;
+			};
+		};
 	};
 };
 
-&scif2 {
-	pinctrl-0 = <&scif2_pins>;
-	pinctrl-names = "default";
+&dsi0 {
+	status = "okay";
+
+	ports {
+		port@1 {
+			dsi0_out: endpoint {
+				remote-endpoint = <&it6161_in>;
+				data-lanes = <1 2 3 4>;
+			};
+		};
+	};
+};
+
+&hdmi_out {
+	status = "okay";
+};
+
+&ssi1 {
 	status = "okay";
 };

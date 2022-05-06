@@ -1,5 +1,5 @@
 /*
- * Copyright 2021 AVNET
+ * Copyright 2022 AVNET
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -8,37 +8,27 @@
  *
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
  * GNU General Public License for more details.
  */
 
 /dts-v1/;
 /plugin/;
 
-#include <dt-bindings/pinctrl/pinctrl-rzg2l.h>
-
 /* 40-pin extended GPIO, expanded into UART, SPI, I2C, PWM and other interfaces */
 
-/ {
-	compatible = "avnet,rzboard", "renesas,r9a07g054l2";
+#include <dt-bindings/pinctrl/pinctrl-rzg2l.h>
 
-	fragment@0 {
-		target = <&pinctrl>;
-			__overlay__ {
-			i2c2_pins: i2c2 {
-				groups = "i2c2_a";
-				function = "i2c2";
-			};
-		};
+&pinctrl {
+	i2c2_pins: i2c2 {
+		groups = "i2c2_a";
+		function = "i2c2";
 	};
+};
 
-	fragment@1 {
-		target = <&i2c2>;
-		__overlay__ {
-			pinctrl-0 = <&i2c2_pins>;
-			pinctrl-names = "default";
-			clock-frequency = <400000>;
-			status = "okay";
-		};
-	};
+&i2c2 {
+	pinctrl-0 = <&i2c2_pins>;
+	pinctrl-names = "default";
+	clock-frequency = <400000>;
+	status = "okay";
 };

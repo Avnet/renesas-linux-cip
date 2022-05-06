@@ -1,5 +1,5 @@
 /*
- * Copyright 2021 AVNET
+ * Copyright 2022 AVNET
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -8,7 +8,7 @@
  *
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
  * GNU General Public License for more details.
  */
 
@@ -19,35 +19,24 @@
 
 /* 40-pin extended GPIO, expanded into UART, SPI, I2C, PWM and other interfaces */
 
-/ {
-	compatible = "avnet,rzboard", "renesas,r9a07g054l2";
-
-	fragment@0 {
-		target = <&pinctrl>;
-			__overlay__ {
-			spi1_pins: rspi1 {
-				groups = "rspi1_clk_b", "rspi1_data_b", "rspi1_ssl_b";
-				function = "rspi1";
-			};
-		};
+&pinctrl {
+	spi1_pins: rspi1 {
+		groups = "rspi1_clk_b", "rspi1_data_b", "rspi1_ssl_b";
+		function = "rspi1";
 	};
+};
 
-	fragment@1 {
-		target = <&rspi1>;
-		__overlay__ {
-			pinctrl-0 = <&spi1_pins>;
-			pinctrl-names = "default";
-			status = "okay";
+&rspi1 {
+	pinctrl-0 = <&spi1_pins>;
+	pinctrl-names = "default";
+	status = "okay";
 
-			#address-cells = <1>;
-			#size-cells = <0>;
+	#address-cells = <1>;
+	#size-cells = <0>;
 
-			spidev@0 {
-
-				compatible = "spidev";
-				reg = <0>;
-				spi-max-frequency = <2000000>;
-			};
-		};
+	spidev@0 {
+		compatible = "semtech,sx1301";
+		reg = <0>;
+		spi-max-frequency = <2000000>;
 	};
 };
