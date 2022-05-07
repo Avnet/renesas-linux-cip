@@ -21,44 +21,51 @@
 /* Disable scif22 and OSTM2 to be used in FreeRTOS on Cortex-M33 */
 
 / {
-	#address-cells = <2>;
-	#size-cells = <2>;
-	vring-ctl0@43000000 {
-		compatible = "vring_uio";
-		reg = <0x0 0x43000000 0x0 0x100000>;
-		no-map;
-	};
-	vring-ctl1@43100000 {
-		compatible = "vring_uio";
-		reg = <0x0 0x43100000 0x0 0x100000>;
-		no-map;
-	};
-	vring-shm0@43200000 {
-		compatible = "shm_uio";
-		reg = <0x0 0x43200000 0x0 0x700000>;
-		no-map;
-	};
-	vring-shm1@43900000 {
-		compatible = "shm_uio";
-		reg = <0x0 0x43900000 0x0 0x700000>;
-		no-map;
-	};
-	rsctbl@42F00000 {
-		compatible = "shm_uio";
-		reg = <0x0 0x42F00000 0x0 0x1000>;
-		no-map;
-	};
-	mhu-shm@42f01000 {
-		compatible = "shm_uio";
-		reg = <0x0 0x42f01000 0x0 0x1000>;
-		no-map;
-	};
-	mbox-uio@10400000 {
-		compatible = "mbox_uio";
-		reg = <0x0 0x10400000 0x0 0x1000>;
-		interrupt-parent = <&gic>;
-		interrupts = <GIC_SPI 77 IRQ_TYPE_LEVEL_HIGH>;
-		status = "okay";
+	compatible = "avnet,rzboard", "renesas,r9a07g054l2";
+	fragment@2 {
+		target-path = "/";
+		__overlay__ {
+			#address-cells = <2>;
+			#size-cells = <2>;
+
+			vring-ctl0@43000000 {
+				compatible = "vring_uio";
+				reg = <0x0 0x43000000 0x0 0x100000>;
+				no-map;
+			};
+			vring-ctl1@43100000 {
+				compatible = "vring_uio";
+				reg = <0x0 0x43100000 0x0 0x100000>;
+				no-map;
+			};
+			vring-shm0@43200000 {
+				compatible = "shm_uio";
+				reg = <0x0 0x43200000 0x0 0x700000>;
+				no-map;
+			};
+			vring-shm1@43900000 {
+				compatible = "shm_uio";
+				reg = <0x0 0x43900000 0x0 0x700000>;
+				no-map;
+			};
+			rsctbl@42F00000 {
+				compatible = "shm_uio";
+				reg = <0x0 0x42F00000 0x0 0x1000>;
+				no-map;
+			};
+			mhu-shm@42f01000 {
+				compatible = "shm_uio";
+				reg = <0x0 0x42f01000 0x0 0x1000>;
+				no-map;
+			};
+			mbox-uio@10400000 {
+				compatible = "mbox_uio";
+				reg = <0x0 0x10400000 0x0 0x1000>;
+				interrupt-parent = <&gic>;
+				interrupts = <GIC_SPI 77 IRQ_TYPE_LEVEL_HIGH>;
+				status = "okay";
+			};
+		};
 	};
 };
 
