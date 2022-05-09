@@ -209,7 +209,7 @@
 
 	hdmi_audio: graph_sound_card {
 		compatible = "audio-graph-card";
-		label = "avt-sound-card";
+		label = "hdmi-sound-card";
 		dais = <&ssi1>;
 	};
 
