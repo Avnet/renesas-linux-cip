@@ -687,17 +687,15 @@ static int ili9881c_dsi_probe(struct mipi_dsi_device *dsi)
 	dsi->mode_flags |= MIPI_DSI_MODE_VIDEO_SYNC_PULSE;
 	dsi->format = MIPI_DSI_FMT_RGB888;
 
-#if 0
-	/* switch MIPI-DSI output to LCD panel but not HDMI */
-	tftcp->enable_gpio = devm_gpiod_get(&dsi->dev, "enable", GPIOD_OUT_HIGH);
-	if (IS_ERR(tftcp->enable_gpio)) {
-		tftcp->enable_gpio = NULL;
-		dev_dbg(&dsi->dev, "Couldn't get our power GPIO\n");
-		return PTR_ERR(tftcp->enable_gpio);
-	} else {
-		gpiod_set_value(tftcp->enable_gpio, 1);
-	}
+    /* The enable GPIO is optional, this pin is MIPI DSI/HDMI switch select input. */
+    tftcp->enable_gpio = devm_gpiod_get_optional(dev, "switch", GPIOD_OUT_HIGH);
+    if (IS_ERR_OR_NULL(tftcp->enable_gpio)) {
+        DRM_DEV_INFO(dev, "No switch enable GPIO");
+    } else {
+        gpiod_set_value_cansleep(tftcp->enable_gpio, 1);
+    }
 
+#if 0
 	tftcp->reset_gpio = devm_gpiod_get_optional(&dsi->dev, "reset", GPIOD_OUT_HIGH);
 	if (IS_ERR(tftcp->reset_gpio))
 		dev_dbg(&dsi->dev, "Couldn't get our reset GPIO\n");
