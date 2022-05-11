@@ -288,6 +288,7 @@ struct it6161 {
 
 	u8 mipi_rx_lane_count;
 	bool enable_drv_hold;
+	bool enable_max_resolution;
 	u8 hdmi_tx_output_color_space;
 	u8 hdmi_tx_input_color_space;
 	u8 hdmi_tx_mode;
@@ -1139,11 +1140,13 @@ static enum drm_mode_status
 it6161_bridge_mode_valid(struct drm_bridge *bridge,
 			 const struct drm_display_mode *mode)
 {
-	if (mode->clock > 148000)
+	bool res = it6161->enable_max_resolution;
+
+	if (mode->clock > 160000)
 		return MODE_CLOCK_HIGH;
 
 	/* support maximum resolution 720p now */
-	if (mode->vdisplay > 720)
+	if ((!res) && (mode->vdisplay > 720))
 		return MODE_BAD_VVALUE;
 
 	return MODE_OK;
@@ -1161,6 +1164,7 @@ static void it6161_bridge_mode_set(struct drm_bridge *bridge,
 	DRM_DEV_DEBUG_DRIVER(dev, "adj mode " DRM_MODE_FMT "\n", DRM_MODE_ARG(adjusted_mode));
 
 	memcpy(&it6161->display_mode, mode, sizeof(struct drm_display_mode));
+	it6161->hdmi_tx_pclk = mode->clock;
 
 	polarity = ((adjusted_mode->flags & DRM_MODE_FLAG_PHSYNC) == DRM_MODE_FLAG_PHSYNC) ? 0x01 : 0x00;
 	polarity |= ((adjusted_mode->flags & DRM_MODE_FLAG_PVSYNC) == DRM_MODE_FLAG_PVSYNC) ? 0x02 : 0x00;
@@ -2352,6 +2356,12 @@ static int it6161_parse_dt(struct it6161 *it6161, struct device_node *np)
 		return -ENODEV;
 	}
 	of_node_put(it6161->host_node);
+
+	if (of_property_read_bool(np,"hdmi-output-1080p")) {
+		it6161->enable_max_resolution = true;
+	} else {
+		it6161->enable_max_resolution = false;
+	}
 
 	return 0;
 }
