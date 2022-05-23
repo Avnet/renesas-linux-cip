@@ -442,6 +442,17 @@ static inline struct it6161 *bridge_to_it6161(struct drm_bridge *bridge)
 	return container_of(bridge, struct it6161, bridge);
 }
 
+static void it6161_reset(struct it6161 *it6161)
+{
+	if (!it6161->reset_gpio)
+			return;
+
+	gpiod_set_value(it6161->reset_gpio, 1);
+	usleep_range(2000, 3000);
+	gpiod_set_value(it6161->reset_gpio, 0);
+	usleep_range(3000, 4000);
+}
+
 static void mipi_rx_logic_reset(struct it6161 *it6161)
 {
 	it6161_mipi_rx_set_bits(it6161, 0x05, 0x08, 0x08);
@@ -2462,10 +2473,10 @@ static int it6161_i2c_probe(struct i2c_client *i2c_mipi_rx,
 	/* The reset GPIO is optional. */
 	it6161->reset_gpio = devm_gpiod_get_optional(dev, "reset", GPIOD_OUT_LOW);
 	if (IS_ERR_OR_NULL(it6161->reset_gpio))  {
-		DRM_DEV_INFO(dev, "No reset GPIO");
-	} else {
-		gpiod_set_value_cansleep(it6161->reset_gpio, 0);
+		DRM_DEV_ERROR(dev, "Failed to retrieve/request reset gpio");
+		return PTR_ERR(it6161->reset_gpio);
 	}
+	it6161_reset(it6161);
 
 	it6161_parse_dt(it6161, dev->of_node);
 	it6161->regmap_mipi_rx = devm_regmap_init_i2c(i2c_mipi_rx, &it6161_mipi_rx_bridge_regmap_config);
