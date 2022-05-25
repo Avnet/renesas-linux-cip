@@ -23,8 +23,7 @@
 
 #include "it6161.h"
 
-#undef DRM_DEV_DEBUG_DRIVER
-#define DRM_DEV_DEBUG_DRIVER DRM_DEV_INFO
+/* #define DEBUG_IT6161_DISAPLY_INFO */
 
 #define AUX_WAIT_TIMEOUT_MS 100
 #define DEFAULT_DRV_HOLD 0
@@ -51,7 +50,7 @@
 
 /* PPI */
 #define EnContCK		TRUE
-#define HSSetNum		1
+#define HSSetNum		3
 #define EnDeSkew		TRUE
 #define PPIDbgSel		12
 #define RegIgnrNull		1
@@ -1950,6 +1949,184 @@ static int hdmi_tx_avi_infoframe_set(struct it6161 *it6161)
 	return 0;
 }
 
+#ifdef DEBUG_IT6161_DISAPLY_INFO
+void hdmi_tx_show_display_mode(struct it6161 *it6161)
+{
+	struct drm_display_mode *display_mode = &it6161->display_mode;
+	struct device *dev = &it6161->i2c_hdmi_tx->dev;
+
+	DRM_DEV_INFO(dev, "timing name:%s\n", display_mode->name);
+	DRM_DEV_INFO(dev, "clock = %dkHz\n", display_mode->clock);
+	DRM_DEV_INFO(dev, "htotal = %d\n", display_mode->htotal);
+	DRM_DEV_INFO(dev, "hactive = %d\n", display_mode->hdisplay);
+	DRM_DEV_INFO(dev, "hfront_proch = %d\n", display_mode->hsync_start - display_mode->hdisplay);
+	DRM_DEV_INFO(dev, "hsyncw = %d\n", display_mode->hsync_end - display_mode->hsync_start);
+	DRM_DEV_INFO(dev, "hback_porch = %d\n", display_mode->htotal - display_mode->hsync_end);
+
+	DRM_DEV_INFO(dev, "vtotal = %d\n", display_mode->vtotal);
+	DRM_DEV_INFO(dev, "vactive = %d\n", display_mode->vdisplay);
+	DRM_DEV_INFO(dev, "vfront_proch = %d\n", display_mode->vsync_start - display_mode->vdisplay);
+	DRM_DEV_INFO(dev, "vsyncw = %d\n", display_mode->vsync_end - display_mode->vsync_start);
+	DRM_DEV_INFO(dev, "vback_porch = %d\n", display_mode->vtotal - display_mode->vsync_end);
+	DRM_DEV_INFO(dev, "drm_display_mode flags = 0x%04x\n", display_mode->flags);
+}
+
+void mipi_rx_calc_mclk(struct it6161 *it6161)
+{
+	struct device *dev = &it6161->i2c_mipi_rx->dev;
+	u32 i, rddata, sum = 0, mclk, calc_time = 3;
+
+	for (i = 0; i < calc_time; i++) {
+		it6161_mipi_rx_set_bits(it6161, 0x9B, 0x80, 0x80);
+		msleep(5);
+		it6161_mipi_rx_set_bits(it6161, 0x9B, 0x80, 0x00);
+
+		rddata = it6161_mipi_rx_read(it6161, 0x9B) & 0x0F;
+		rddata <<= 8;
+		rddata += it6161_mipi_rx_read(it6161, 0x9A);
+
+		sum += rddata;
+	}
+
+	sum /= calc_time;
+	mclk = it6161->mipi_rx_rclk * 2048 / sum;
+	DRM_DEV_INFO(dev, "MCLK = %d.%03dMHz", mclk / 1000, mclk % 1000);
+}
+
+void mipi_rx_calc_pclk(struct it6161 *it6161)
+{
+	struct device *dev = &it6161->i2c_mipi_rx->dev;
+	u32 rddata, sum = 0, RxPCLK;
+	u8 i;
+
+	for (i = 0; i < 10; i++) {
+		it6161_mipi_rx_set_bits(it6161, 0x99, 0x80, 0x00);
+		msleep(5);
+		it6161_mipi_rx_set_bits(it6161, 0x99, 0x80, 0x80);
+
+		rddata = it6161_mipi_rx_read(it6161, 0x99) & 0x0F;
+		rddata <<= 8;
+		rddata += it6161_mipi_rx_read(it6161, 0x98);
+		sum += rddata;
+	}
+
+	sum /= 10;
+	RxPCLK = it6161->mipi_rx_rclk * 2048 / sum;
+	it6161->mipi_rx_pclk = RxPCLK;
+	DRM_DEV_INFO(dev, "RxPCLK = %d.%03dMHz", RxPCLK / 1000, RxPCLK % 1000);
+}
+
+void mipi_rx_show_mrec(struct it6161 *it6161)
+{
+	struct device *dev = &it6161->i2c_mipi_rx->dev;
+	int MHFP, MHSW, MHBP, MHDEW, MHVR2nd, MHBlank;
+	int MVFP, MVSW, MVBP, MVDEW, MVFP2nd, MVTotal;
+
+	MHSW  = it6161_mipi_rx_read(it6161, 0x52);
+	MHSW += (it6161_mipi_rx_read(it6161, 0x53)&0x3F)<<8;
+
+	MHFP  = it6161_mipi_rx_read(it6161, 0x50);
+	MHFP += (it6161_mipi_rx_read(it6161, 0x51)&0x3F)<<8;
+
+	MHBP  = it6161_mipi_rx_read(it6161, 0x54);
+	MHBP += (it6161_mipi_rx_read(it6161, 0x55)&0x3F)<<8;
+
+	MHDEW  = it6161_mipi_rx_read(it6161, 0x56);
+	MHDEW += (it6161_mipi_rx_read(it6161, 0x57)&0x3F)<<8;
+
+	MHVR2nd  = it6161_mipi_rx_read(it6161, 0x58);
+	MHVR2nd += (it6161_mipi_rx_read(it6161, 0x59)&0x3F)<<8;
+
+	MHBlank = MHFP + MHSW + MHBP;
+
+	MVSW  = it6161_mipi_rx_read(it6161, 0x5C);
+	MVSW += (it6161_mipi_rx_read(it6161, 0x5D)&0x3F)<<8;
+
+	MVFP  = it6161_mipi_rx_read(it6161, 0x5A);
+	MVFP += (it6161_mipi_rx_read(it6161, 0x5B)&0x3F)<<8;
+
+	MVBP  = it6161_mipi_rx_read(it6161, 0x5E);
+	MVBP += (it6161_mipi_rx_read(it6161, 0x5F)&0x3F)<<8;
+
+	MVDEW  = it6161_mipi_rx_read(it6161, 0x60);
+	MVDEW += (it6161_mipi_rx_read(it6161, 0x61)&0x3F)<<8;
+
+	MVFP2nd  = it6161_mipi_rx_read(it6161, 0x62);
+	MVFP2nd += (it6161_mipi_rx_read(it6161, 0x63)&0x3F)<<8;
+
+	MVTotal = MVFP + MVSW + MVBP + MVDEW ;
+
+	DRM_DEV_INFO(dev, "MHFP    = %d\n", MHFP);
+	DRM_DEV_INFO(dev, "MHSW    = %d\n", MHSW);
+	DRM_DEV_INFO(dev, "MHBP    = %d\n", MHBP);
+	DRM_DEV_INFO(dev, "MHDEW   = %d\n", MHDEW);
+	DRM_DEV_INFO(dev, "MHVR2nd = %d\n", MHVR2nd);
+	DRM_DEV_INFO(dev, "MHBlank  = %d\n", MHBlank);
+
+	DRM_DEV_INFO(dev, "MVFP    = %d\n", MVFP);
+	DRM_DEV_INFO(dev, "MVSW    = %d\n", MVSW);
+	DRM_DEV_INFO(dev, "MVBP   = %d\n", MVBP);
+	DRM_DEV_INFO(dev, "MVDEW   = %d\n", MVDEW);
+	DRM_DEV_INFO(dev, "MVFP2nd   = %d\n", MVFP2nd);
+	DRM_DEV_INFO(dev, "MVTotal = %d\n", MVTotal);
+}
+
+void mipi_rx_show_prec( struct it6161 *it6161 )
+{
+	struct device *dev = &it6161->i2c_mipi_rx->dev;
+	int PHFP, PHSW, PHBP, PHDEW, PHVR2nd, PHTotal;
+	int PVFP, PVSW, PVBP, PVDEW, PVFP2nd, PVTotal;
+
+	PHFP  = it6161_mipi_rx_read(it6161, 0x30);
+	PHFP += (it6161_mipi_rx_read(it6161, 0x31)&0x3F)<<8;
+
+	PHSW  = it6161_mipi_rx_read(it6161, 0x32);
+	PHSW += (it6161_mipi_rx_read(it6161, 0x33)&0x3F)<<8;
+
+	PHBP  = it6161_mipi_rx_read(it6161, 0x34);
+	PHBP += (it6161_mipi_rx_read(it6161, 0x35)&0x3F)<<8;
+
+	PHDEW  = it6161_mipi_rx_read(it6161, 0x36);
+	PHDEW += (it6161_mipi_rx_read(it6161, 0x37)&0x3F)<<8;
+
+	PHVR2nd  = it6161_mipi_rx_read(it6161, 0x38);
+	PHVR2nd += (it6161_mipi_rx_read(it6161, 0x39)&0x3F)<<8;
+
+	PHTotal = PHFP + PHSW + PHBP + PHDEW ;
+
+	PVFP  = it6161_mipi_rx_read(it6161, 0x3A);
+	PVFP += (it6161_mipi_rx_read(it6161, 0x3B)&0x3F)<<8;
+
+	PVSW  = it6161_mipi_rx_read(it6161, 0x3C);
+	PVSW += (it6161_mipi_rx_read(it6161, 0x3D)&0x3F)<<8;
+
+	PVBP  = it6161_mipi_rx_read(it6161, 0x3E);
+	PVBP += (it6161_mipi_rx_read(it6161, 0x3F)&0x3F)<<8;
+
+	PVDEW  = it6161_mipi_rx_read(it6161, 0x40);
+	PVDEW += (it6161_mipi_rx_read(it6161, 0x41)&0x3F)<<8;
+
+	PVFP2nd  = it6161_mipi_rx_read(it6161, 0x42);
+	PVFP2nd += (it6161_mipi_rx_read(it6161, 0x43)&0x3F)<<8;
+
+	PVTotal = PVFP + PVSW + PVBP + PVDEW ;
+
+	DRM_DEV_INFO(dev, "PHFP    = %d\r\n", PHFP);
+	DRM_DEV_INFO(dev, "PHSW    = %d\r\n", PHSW);
+	DRM_DEV_INFO(dev, "PHBP   = %d\r\n", PHBP);
+	DRM_DEV_INFO(dev, "PHDEW   = %d\r\n", PHDEW);
+	DRM_DEV_INFO(dev, "PHVR2nd   = %d\r\n", PHVR2nd);
+	DRM_DEV_INFO(dev, "PHTotal = %d\r\n", PHTotal);
+
+	DRM_DEV_INFO(dev, "PVFP    = %d\r\n", PVFP);
+	DRM_DEV_INFO(dev, "PVSW    = %d\r\n", PVSW);
+	DRM_DEV_INFO(dev, "PVBP   = %d\r\n", PVBP);
+	DRM_DEV_INFO(dev, "PVDEW   = %d\r\n", PVDEW);
+	DRM_DEV_INFO(dev, "PVFP2nd   = %d\r\n", PVFP2nd);
+	DRM_DEV_INFO(dev, "PVTotal = %d\r\n", PVTotal);
+}
+#endif
+
 static void hdmi_tx_set_output_process(struct it6161 *it6161)
 {
 	struct device *dev = &it6161->i2c_hdmi_tx->dev;
@@ -1957,6 +2134,13 @@ static void hdmi_tx_set_output_process(struct it6161 *it6161)
 	u32 TMDSClock;
 
 	DRM_DEV_DEBUG_DRIVER(dev, "hdmi tx set\n");
+#ifdef DEBUG_IT6161_DISAPLY_INFO
+	hdmi_tx_show_display_mode(it6161);
+	mipi_rx_calc_mclk(it6161);
+	mipi_rx_show_mrec(it6161);
+	mipi_rx_calc_pclk(it6161);
+	mipi_rx_show_prec(it6161);
+#endif
 
 	TMDSClock = it6161->hdmi_tx_pclk * 1000 *
 	    (it6161->source_avi_infoframe.pixel_repeat + 1);
