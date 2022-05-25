@@ -22,6 +22,7 @@
 };
 
 &it6161 {
+	hdmi-output-1080p;
 	status = "okay";
 	ports {
 		#address-cells = <1>;
