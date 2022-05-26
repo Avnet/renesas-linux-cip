@@ -1384,7 +1384,7 @@ static int ssi1_ctrl_d_pins[] = {
 
 static int ssi1_data_d_pins[] = {
 	/* TXD, RXD */
-	RZ_G2L_PIN(46, 2), RZ_G2L_PIN(46, 3),
+	RZ_G2L_PIN(46, 2), /* RZ_G2L_PIN(46, 3), */
 };
 
 static int ssi1_ctrl_e_pins[] = {
