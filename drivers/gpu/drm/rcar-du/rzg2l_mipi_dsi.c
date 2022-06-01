@@ -749,16 +749,17 @@ static void rzg2l_mipi_dsi_enable(struct drm_bridge *bridge)
 	if (ret < 0)
 		return;
 
-	if (mipi_dsi->panel) {
-		drm_panel_prepare(mipi_dsi->panel);
-		drm_panel_enable(mipi_dsi->panel);
-	}
 
 	rzg2l_mipi_dsi_set_display_timing(mipi_dsi);
 
 	ret = rzg2l_mipi_dsi_start_hs_clock(mipi_dsi);
 	if (ret < 0)
 		return;
+
+	if (mipi_dsi->panel) {
+		drm_panel_prepare(mipi_dsi->panel);
+		drm_panel_enable(mipi_dsi->panel);
+	}
 
 	ret = rzg2l_mipi_dsi_start_video(mipi_dsi);
 	if (ret < 0)
@@ -848,9 +849,6 @@ static int rzg2l_mipi_dsi_host_attach(struct mipi_dsi_host *host,
 				      struct mipi_dsi_device *device)
 {
 	struct rzg2l_mipi_dsi *mipi_dsi = host_to_rzg2l_mipi_dsi(host);
-
-	if (device->lanes > mipi_dsi->num_data_lanes)
-		return -EINVAL;
 
 	mipi_dsi->lanes = device->lanes;
 	mipi_dsi->format = device->format;
