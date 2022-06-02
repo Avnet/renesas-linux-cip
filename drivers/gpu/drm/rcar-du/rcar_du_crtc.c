@@ -517,7 +517,11 @@ static void rcar_du_crtc_set_display_timing(struct rcar_du_crtc *rcrtc)
 		} while ((val & DIVDSILPCLK_STS) != 0);
 	
 		reg_write(cpg_base + CPG_PL5_SDIV, 0x01010000 | (resolution_param[index].dsi_div_a<<0) | (resolution_param[index].dsi_div_b << 8)); //DIV_DSI_A, DIV_DSI_B
-		reg_write(cpg_base + CPG_OTHERFUNC1_REG, 0x10000); //SEL_PLL5_3 clock
+		if (resolution_param[index].frequency == 148500) {
+			reg_write(cpg_base + CPG_OTHERFUNC1_REG, 0x10001); //SEL_PLL5_3 clock
+		} else {
+			reg_write(cpg_base + CPG_OTHERFUNC1_REG, 0x10000); //SEL_PLL5_1 clock
+		}
 		reg_write(cpg_base + CPG_SIPLL5_STBY, 0x00050001);
 		do
 		{
