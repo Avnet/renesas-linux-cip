@@ -16,6 +16,7 @@
 /plugin/;
 
 &du {
+	dsi-lanes = <2>;
 	status = "okay";
 };
 
@@ -32,6 +33,7 @@
 };
 
 &mipi_panel {
+	lcd-model = "sh720128t003";
 	status = "okay";
 	port {
 		panel_in: endpoint {

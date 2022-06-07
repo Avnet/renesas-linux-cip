@@ -568,6 +568,12 @@ static int rcar_du_probe(struct platform_device *pdev)
 	rcdu->dev = &pdev->dev;
 	rcdu->info = of_device_get_match_data(rcdu->dev);
 
+	if (of_property_read_u32(pdev->dev.of_node, "dsi-lanes",
+                                 &rcdu->dsi_lanes)) {
+		dev_err(&pdev->dev, "no found the property 'dsi-lanes',using the default setting\n");
+		rcdu->dsi_lanes = 4;
+	}
+
 	platform_set_drvdata(pdev, rcdu);
 
 	/* I/O resources */
