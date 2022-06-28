@@ -808,7 +808,7 @@ static int ili9881c_dsi_probe(struct mipi_dsi_device *dsi)
 
 	of_property_read_string(dsi->dev.of_node, "lcd-model", &str);
 
-	if (!strcmp(str, "sh720128t005")) {
+	if (!strcmp(str, "ph720128t005")) {
 			tftcp->init_code = ili9881c_init_ph720128t005;
 			tftcp->init_code_len = ARRAY_SIZE(ili9881c_init_ph720128t005);
 			dev_dbg(&dsi->dev, "lcd PH720128T005ZBC\n");

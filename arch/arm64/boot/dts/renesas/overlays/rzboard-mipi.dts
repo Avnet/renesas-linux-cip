@@ -33,7 +33,7 @@
 };
 
 &mipi_panel {
-	lcd-model = "sh720128t003";
+	lcd-model = "ph720128t005";
 	status = "okay";
 	port {
 		panel_in: endpoint {
@@ -47,5 +47,9 @@
 };
 
 &backlight {
+	status = "okay";
+};
+
+&gt911 {
 	status = "okay";
 };
