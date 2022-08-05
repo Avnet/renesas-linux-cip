@@ -39,10 +39,25 @@
 			reg = <0x0 0xB4000000 0x0 0x03000000>;
 		};
 	};
+
+	udmabuf@0 {
+		compatible = "ikwzm,u-dma-buf";
+		device-name = "udmabuf0";
+		minor-number = <0>;
+		size = <0x4000000>; // 64MiB
+		dma-coherent;
+		memory-region = <&image_buf0>;
+	};
 };
 
 &pinctrl {
 	/delete-node/ gpio-sd0-pwr-en-hog;
 	/delete-node/ sd0-dev-sel-hog;
 	/delete-node/ sd1-pwr-en-hog;
+};
+
+&drpai0 {
+    memory-region = <&drp_reserved>;
+    linux-memory-region = < &{/memory@48000000} >;
+    status = "okay";
 };

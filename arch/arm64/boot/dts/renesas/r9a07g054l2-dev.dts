@@ -67,6 +67,14 @@
 	vspm_if {
 		compatible = "renesas,vspm_if";
 	};
+	udmabuf@0 {
+		compatible = "ikwzm,u-dma-buf";
+		device-name = "udmabuf0";
+		minor-number = <0>;
+		size = <0x4000000>; // 64MiB
+		dma-coherent;
+		memory-region = <&image_buf0>;
+	};
 };
 
 &ehci0 {
@@ -83,4 +91,10 @@
 
 &ohci1 {
 	memory-region = <&global_cma>;
+};
+
+&drpai0 {
+    memory-region = <&drp_reserved>;
+    linux-memory-region = < &{/memory@48000000} >;
+    status = "okay";
 };
