@@ -15,12 +15,33 @@
 #include <media/v4l2-rect.h>
 
 #include "rzg2l-cru.h"
+//#ifdef ENABLE_ISP
+#include <linux/isp_ctrl.h>
+//#endif // ENABLE_ISP
 
 #define RZG2L_CRU_DEFAULT_FORMAT	V4L2_PIX_FMT_YUYV
 #define RZG2L_CRU_DEFAULT_WIDTH		800
 #define RZG2L_CRU_DEFAULT_HEIGHT	600
 #define RZG2L_CRU_DEFAULT_FIELD		V4L2_FIELD_NONE
 #define RZG2L_CRU_DEFAULT_COLORSPACE	V4L2_COLORSPACE_SRGB
+
+//#ifdef ENABLE_ISP
+static u32 rzg2l_cru_format_bytesperline(struct v4l2_pix_format *pix);
+u32 rzg2l_cru_isp_format_bytesperline(struct v4l2_pix_format *pix)
+{
+	return rzg2l_cru_format_bytesperline(pix);
+}
+struct v4l2_subdev *rzg2l_cru_get_csi_subdev(struct file *file)
+{
+	struct rzg2l_cru_dev *cru = video_drvdata(file);
+	return  cru->group->csi.subdev;
+}
+void rzg2l_cru_set_pixelformat(struct file *file, __u32 format)
+{
+	struct rzg2l_cru_dev *cru = video_drvdata(file);
+	cru->format.pixelformat = format;
+}
+//#endif // ENABLE_ISP
 
 /* -----------------------------------------------------------------------------
  * Format Conversions
@@ -43,6 +64,14 @@ static const struct rzg2l_cru_video_format rzg2l_cru_formats[] = {
 		.fourcc			= V4L2_PIX_FMT_UYVY,
 		.bpp			= 2,
 	},
+// #ifdef ENABLE_ISP
+#if 1
+	{
+		.fourcc			= V4L2_PIX_FMT_RGB24,
+		.bpp			= 3,
+	},
+#endif
+// #endif
 	{
 		.fourcc			= V4L2_PIX_FMT_BGR24,
 		.bpp			= 3,
@@ -141,6 +170,19 @@ static const struct rzg2l_cru_video_format rzg2l_cru_formats[] = {
 	},
 };
 
+//#ifdef ENABLE_ISP
+#define RZG2L_CRU_FMT_IDX_YUYV		(2)
+#define RZG2L_CRU_FMT_IDX_UYVY		(3)
+#define RZG2L_CRU_FMT_IDX_RGB24		(4)
+#define RZG2L_CRU_FMT_IDX_ARGB32	(8)
+static const struct rzg2l_cru_video_format* rzg2l_cru_isp_formats[]={
+	&rzg2l_cru_formats[RZG2L_CRU_FMT_IDX_YUYV], 	/* V4L2_PIX_FMT_YUYV */
+	&rzg2l_cru_formats[RZG2L_CRU_FMT_IDX_UYVY],		/* V4L2_PIX_FMT_UYVY */
+	&rzg2l_cru_formats[RZG2L_CRU_FMT_IDX_RGB24],	/* V4L2_PIX_FMT_RGB24 */
+	&rzg2l_cru_formats[RZG2L_CRU_FMT_IDX_ARGB32],	/* V4L2_PIX_FMT_ARGB32 */
+};
+//#endif // ENABLE_ISP
+
 const struct rzg2l_cru_video_format
 *rzg2l_cru_format_from_pixel(u32 pixelformat)
 {
@@ -155,6 +197,34 @@ const struct rzg2l_cru_video_format
 
 static u32 rzg2l_cru_format_bytesperline(struct v4l2_pix_format *pix)
 {
+#if 1
+    //for ISP Support PKG
+	const struct rzg2l_cru_video_format *fmt;
+    u32 bytesperline;
+ 
+    if( pix->pixelformat == V4L2_PIX_FMT_SRGGB8 )
+    {
+        bytesperline = pix->width;
+    }
+    else if( pix->pixelformat == V4L2_PIX_FMT_SRGGB10 )
+    {
+        bytesperline = ((pix->width + 11)/12) * 8 * 2;
+    }
+    else if( pix->pixelformat == V4L2_PIX_FMT_SRGGB12 )
+    {
+        bytesperline = ((pix->width + 19)/20) * 8 * 4;
+    }
+    else
+    {
+	fmt = rzg2l_cru_format_from_pixel(pix->pixelformat);
+
+        if (WARN_ON(!fmt))
+            return -EINVAL;
+
+        bytesperline = pix->width * fmt->bpp;
+    }
+    return bytesperline;
+#else
 	const struct rzg2l_cru_video_format *fmt;
 
 	fmt = rzg2l_cru_format_from_pixel(pix->pixelformat);
@@ -163,6 +233,7 @@ static u32 rzg2l_cru_format_bytesperline(struct v4l2_pix_format *pix)
 		return -EINVAL;
 
 	return pix->width * fmt->bpp;
+#endif
 }
 
 static u32 rzg2l_cru_format_sizeimage(struct v4l2_pix_format *pix)
@@ -272,6 +343,7 @@ static int rzg2l_cru_querycap(struct file *file, void *priv,
 {
 	struct rzg2l_cru_dev *cru = video_drvdata(file);
 
+	dprintk("[info] %s: start\n", __func__);
 	strlcpy(cap->driver, KBUILD_MODNAME, sizeof(cap->driver));
 	strlcpy(cap->card, "RZG2L_CRU", sizeof(cap->card));
 	snprintf(cap->bus_info, sizeof(cap->bus_info), "platform:%s",
@@ -284,6 +356,7 @@ static int rzg2l_cru_mc_try_fmt_vid_cap(struct file *file, void *priv,
 {
 	struct rzg2l_cru_dev *cru = video_drvdata(file);
 
+	dprintk("[info] %s: start\n", __func__);
 	rzg2l_cru_mc_try_format(cru, &f->fmt.pix);
 
 	return 0;
@@ -294,6 +367,7 @@ static int rzg2l_cru_mc_s_fmt_vid_cap(struct file *file, void *priv,
 {
 	struct rzg2l_cru_dev *cru = video_drvdata(file);
 
+	dprintk("[info] %s: start\n", __func__);
 	if (vb2_is_busy(&cru->queue))
 		return -EBUSY;
 
@@ -315,6 +389,7 @@ static int rzg2l_cru_g_fmt_vid_cap(struct file *file, void *priv,
 {
 	struct rzg2l_cru_dev *cru = video_drvdata(file);
 
+	dprintk("[info] %s: start\n", __func__);
 	f->fmt.pix = cru->format;
 
 	return 0;
@@ -323,10 +398,20 @@ static int rzg2l_cru_g_fmt_vid_cap(struct file *file, void *priv,
 static int rzg2l_cru_enum_fmt_vid_cap(struct file *file, void *priv,
 				 struct v4l2_fmtdesc *f)
 {
+	dprintk("[info] %s: start\n", __func__);
+//#ifdef ENABLE_ISP
+#if 0
 	if (f->index >= ARRAY_SIZE(rzg2l_cru_formats))
 		return -EINVAL;
 
 	f->pixelformat = rzg2l_cru_formats[f->index].fourcc;
+#else
+	if (f->index >= ARRAY_SIZE(rzg2l_cru_isp_formats))
+		return -EINVAL;
+
+	f->pixelformat = rzg2l_cru_isp_formats[f->index]->fourcc;
+#endif
+//#endif ENABLE_ISP
 
 	return 0;
 }
@@ -337,6 +422,7 @@ static int rzg2l_cru_g_selection(struct file *file, void *fh,
 	struct rzg2l_cru_dev *cru = video_drvdata(file);
 	int ret;
 
+	dprintk("[info] %s: start\n", __func__);
 	if (s->type != V4L2_BUF_TYPE_VIDEO_CAPTURE)
 		return -EINVAL;
 
@@ -382,6 +468,7 @@ static int rzg2l_cru_s_selection(struct file *file, void *fh,
 		.height = 2,
 	};
 
+	dprintk("[info] %s: start\n", __func__);
 	if (s->type != V4L2_BUF_TYPE_VIDEO_CAPTURE)
 		return -EINVAL;
 
@@ -441,12 +528,14 @@ static int rzg2l_cru_s_selection(struct file *file, void *fh,
 
 static int rzg2l_cru_g_input(struct file *file, void *priv, unsigned int *i)
 {
+	dprintk("[info] %s: start\n", __func__);
 	*i = 0;
 	return 0;
 }
 
 static int rzg2l_cru_s_input(struct file *file, void *priv, unsigned int i)
 {
+	dprintk("[info] %s: start\n", __func__);
 	if (i > 0)
 		return -EINVAL;
 	return 0;
@@ -455,6 +544,7 @@ static int rzg2l_cru_s_input(struct file *file, void *priv, unsigned int i)
 static int rzg2l_cru_mc_enum_input(struct file *file, void *priv,
 			      struct v4l2_input *i)
 {
+	dprintk("[info] %s: start\n", __func__);
 	if (i->index != 0)
 		return -EINVAL;
 
@@ -467,6 +557,7 @@ static int rzg2l_cru_mc_enum_input(struct file *file, void *priv,
 static int rzg2l_cru_subscribe_event(struct v4l2_fh *fh,
 				     const struct v4l2_event_subscription *sub)
 {
+	dprintk("[info] %s: start\n", __func__);
 	switch (sub->type) {
 	case V4L2_EVENT_SOURCE_CHANGE:
 		return v4l2_event_subscribe(fh, sub, 4, NULL);
@@ -512,6 +603,9 @@ static int rzg2l_cru_mc_open(struct file *file)
 	struct rzg2l_cru_dev *cru = video_drvdata(file);
 	int ret;
 
+// #ifdef ENABLE_ISP
+    isp_ctrl_init(file);
+// #endif // ENABLE_ISP
 	ret = mutex_lock_interruptible(&cru->lock);
 	if (ret)
 		return ret;
@@ -550,6 +644,9 @@ static int rzg2l_cru_mc_release(struct file *file)
 	struct rzg2l_cru_dev *cru = video_drvdata(file);
 	int ret;
 
+// #ifdef ENABLE_ISP
+	isp_ctrl_deinit();
+// #endif // ENABLE_ISP
 	mutex_lock(&cru->lock);
 
 	/* the release helper will cleanup any on-going streaming. */
@@ -628,7 +725,11 @@ int rzg2l_cru_v4l2_register(struct rzg2l_cru_dev *cru)
 
 	rzg2l_cru_format_align(cru, &cru->format);
 
-	ret = video_register_device(&cru->vdev, VFL_TYPE_VIDEO, -1);
+//#ifdef ENABLE_ISP
+// fixed device name (/dev/video0)
+//	ret = video_register_device(&cru->vdev, VFL_TYPE_VIDEO, -1);
+	ret = video_register_device(&cru->vdev, VFL_TYPE_VIDEO, 0);
+//#endif //ENABLE_ISP
 	if (ret) {
 		cru_err(cru, "Failed to register video device\n");
 		return ret;

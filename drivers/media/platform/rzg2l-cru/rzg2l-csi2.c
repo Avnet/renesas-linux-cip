@@ -170,6 +170,14 @@ struct rzg2l_csi2 {
 	unsigned long hsfreq;
 };
 
+//#ifdef ENABLE_ISP
+static inline struct rzg2l_csi2 *sd_to_csi2(struct v4l2_subdev *sd);
+struct v4l2_subdev *rgz2l_csi2_get_remote(struct v4l2_subdev *sd)
+{
+	struct rzg2l_csi2 *dev = sd_to_csi2(sd);
+	return dev->remote;
+}
+//#endif ENABLE_ISP
 static inline struct rzg2l_csi2 *sd_to_csi2(struct v4l2_subdev *sd)
 {
 	return container_of(sd, struct rzg2l_csi2, subdev);

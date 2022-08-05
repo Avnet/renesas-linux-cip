@@ -15,6 +15,9 @@
 #include <media/videobuf2-dma-contig.h>
 
 #include "rzg2l-cru.h"
+//#ifdef ENABLE_ISP
+#include <linux/isp_ctrl.h>
+//#endif // ENABLE_ISP
 
 /* HW CRU Registers Definition */
 /* CRU Control Register */
@@ -423,7 +426,10 @@ static void rzg2l_cru_fill_hw_slot(struct rzg2l_cru_dev *cru, int slot)
 {
 	struct rzg2l_cru_buffer *buf;
 	struct vb2_v4l2_buffer *vbuf;
-	dma_addr_t phys_addr;
+// #ifdef ENABLE_ISP
+//	dma_addr_t phys_addr;
+	dma_addr_t phys_addr, out_phys_addr;
+// #endif //ENABLE_ISP
 
 	/* A already populated slot shall never be overwritten. */
 	if (WARN_ON(cru->queue_buf[slot] != NULL))
@@ -443,7 +449,12 @@ static void rzg2l_cru_fill_hw_slot(struct rzg2l_cru_dev *cru, int slot)
 		cru->queue_buf[slot] = vbuf;
 
 		/* Setup DMA */
-		phys_addr = vb2_dma_contig_plane_dma_addr(&vbuf->vb2_buf, 0);
+// #ifdef ENABLE_ISP
+//		phys_addr = vb2_dma_contig_plane_dma_addr(&vbuf->vb2_buf, 0);
+		phys_addr = isp_ctrl_get_camera_phys_addr();
+		out_phys_addr = vb2_dma_contig_plane_dma_addr(&vbuf->vb2_buf, 0);
+		isp_ctrl_dma_add_list_tail(phys_addr, out_phys_addr);
+// #endif //ENABLE_ISP
 	}
 
 	rzg2l_cru_set_slot_addr(cru, slot, phys_addr);
@@ -494,6 +505,7 @@ static void rzg2l_cru_csi2_setup(struct rzg2l_cru_dev *cru)
 		icnmc = ICnMC_INF_RGB666;
 		cru->input_fmt = RGB;
 		break;
+	case MEDIA_BUS_FMT_RGB888_1X24:
 	case MEDIA_BUS_FMT_BGR888_1X24:
 		icnmc = ICnMC_INF_RGB888;
 		cru->input_fmt = RGB;
@@ -1132,10 +1144,10 @@ static irqreturn_t rzg2l_cru_irq(int irq, void *data)
 				goto done;
 			}
 		} else {
-			if (slot != 0) {
-				cru_dbg(cru, "Starting sync slot: %d\n", slot);
-				goto done;
-			}
+		if (slot != 0) {
+			cru_dbg(cru, "Starting sync slot: %d\n", slot);
+			goto done;
+		}
 		}
 
 		cru_dbg(cru, "Capture start synced!\n");
@@ -1157,6 +1169,24 @@ static irqreturn_t rzg2l_cru_irq(int irq, void *data)
 		goto done;
 	}
 
+#if 1
+//#ifdef ENABLE_ISP
+	/* Capture frame */
+	if (cru->queue_buf[slot]) {
+		cru->queue_buf[slot]->field = cru->format.field;
+		cru->queue_buf[slot]->sequence = cru->sequence;
+		cru->queue_buf[slot]->vb2_buf.timestamp = ktime_get_ns();
+		vb2_buffer_done(&cru->queue_buf[slot]->vb2_buf,
+				VB2_BUF_STATE_DONE);
+		isp_ctrl_buffer_done(&cru->queue_buf[slot]->vb2_buf);
+		cru->queue_buf[slot] = NULL;
+	} else {
+		/* Scratch buffer was used, dropping frame. */
+		cru_dbg(cru, "Dropping frame %u\n", cru->sequence);
+	}
+//#endif //ENABLE_ISP
+#else
+
 	/* Capture frame */
 	if (cru->queue_buf[slot]) {
 		cru->queue_buf[slot]->field = cru->format.field;
@@ -1169,7 +1199,7 @@ static irqreturn_t rzg2l_cru_irq(int irq, void *data)
 		/* Scratch buffer was used, dropping frame. */
 		cru_dbg(cru, "Dropping frame %u\n", cru->sequence);
 	}
-
+#endif
 	cru->sequence++;
 
 	/* Prepare for next frame */

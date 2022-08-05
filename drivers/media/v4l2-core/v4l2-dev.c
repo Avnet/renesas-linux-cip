@@ -449,7 +449,7 @@ static int v4l2_release(struct inode *inode, struct file *filp)
 	if (vdev->fops->release) {
 		if (v4l2_device_supports_requests(vdev->v4l2_dev)) {
 			mutex_lock(&vdev->v4l2_dev->mdev->req_queue_mutex);
-			ret = vdev->fops->release(filp);
+		ret = vdev->fops->release(filp);
 			mutex_unlock(&vdev->v4l2_dev->mdev->req_queue_mutex);
 		} else {
 			ret = vdev->fops->release(filp);
@@ -583,8 +583,8 @@ static void determine_valid_ioctls(struct video_device *vdev)
 	if (vdev->ctrl_handler || ops->vidioc_querymenu)
 		set_bit(_IOC_NR(VIDIOC_QUERYMENU), valid_ioctls);
 	if (!is_tch) {
-		SET_VALID_IOCTL(ops, VIDIOC_G_FREQUENCY, vidioc_g_frequency);
-		SET_VALID_IOCTL(ops, VIDIOC_S_FREQUENCY, vidioc_s_frequency);
+	SET_VALID_IOCTL(ops, VIDIOC_G_FREQUENCY, vidioc_g_frequency);
+	SET_VALID_IOCTL(ops, VIDIOC_S_FREQUENCY, vidioc_s_frequency);
 	}
 	SET_VALID_IOCTL(ops, VIDIOC_LOG_STATUS, vidioc_log_status);
 #ifdef CONFIG_VIDEO_ADV_DEBUG
@@ -731,9 +731,9 @@ static void determine_valid_ioctls(struct video_device *vdev)
 				set_bit(_IOC_NR(VIDIOC_G_INPUT), valid_ioctls);
 				set_bit(_IOC_NR(VIDIOC_S_INPUT), valid_ioctls);
 			} else {
-				SET_VALID_IOCTL(ops, VIDIOC_ENUMINPUT, vidioc_enum_input);
-				SET_VALID_IOCTL(ops, VIDIOC_G_INPUT, vidioc_g_input);
-				SET_VALID_IOCTL(ops, VIDIOC_S_INPUT, vidioc_s_input);
+			SET_VALID_IOCTL(ops, VIDIOC_ENUMINPUT, vidioc_enum_input);
+			SET_VALID_IOCTL(ops, VIDIOC_G_INPUT, vidioc_g_input);
+			SET_VALID_IOCTL(ops, VIDIOC_S_INPUT, vidioc_s_input);
 			}
 			SET_VALID_IOCTL(ops, VIDIOC_ENUMAUDIO, vidioc_enumaudio);
 			SET_VALID_IOCTL(ops, VIDIOC_G_AUDIO, vidioc_g_audio);
@@ -747,9 +747,9 @@ static void determine_valid_ioctls(struct video_device *vdev)
 				set_bit(_IOC_NR(VIDIOC_G_OUTPUT), valid_ioctls);
 				set_bit(_IOC_NR(VIDIOC_S_OUTPUT), valid_ioctls);
 			} else {
-				SET_VALID_IOCTL(ops, VIDIOC_ENUMOUTPUT, vidioc_enum_output);
-				SET_VALID_IOCTL(ops, VIDIOC_G_OUTPUT, vidioc_g_output);
-				SET_VALID_IOCTL(ops, VIDIOC_S_OUTPUT, vidioc_s_output);
+			SET_VALID_IOCTL(ops, VIDIOC_ENUMOUTPUT, vidioc_enum_output);
+			SET_VALID_IOCTL(ops, VIDIOC_G_OUTPUT, vidioc_g_output);
+			SET_VALID_IOCTL(ops, VIDIOC_S_OUTPUT, vidioc_s_output);
 			}
 			SET_VALID_IOCTL(ops, VIDIOC_ENUMAUDOUT, vidioc_enumaudout);
 			SET_VALID_IOCTL(ops, VIDIOC_G_AUDOUT, vidioc_g_audout);

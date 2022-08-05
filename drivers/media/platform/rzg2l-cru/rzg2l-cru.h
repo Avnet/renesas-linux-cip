@@ -47,20 +47,6 @@
 
 static const struct v4l2_ctrl_ops rzg2l_cru_ctrl_ops;
 
-static const struct v4l2_ctrl_config rzg2l_cru_ctrls[V4L2_CID_CRU_LIMIT] = {
-	{
-		.id = V4L2_CID_CRU_FRAME_SKIP,
-		.type = V4L2_CTRL_TYPE_BOOLEAN,
-		.ops = &rzg2l_cru_ctrl_ops,
-		.name = "Skipping Frames Enable/Disable",
-		.max = 1,
-		.min = 0,
-		.step = 1,
-		.def = 0,
-		.is_private = 1,
-	}
-};
-
 /* Minimum skipping frame for camera sensors stability */
 #define CRU_FRAME_SKIP		3
 
@@ -230,6 +216,13 @@ struct rzg2l_cru_dev {
 #define cru_info(d, fmt, arg...)	dev_info(d->dev, fmt, ##arg)
 #define cru_warn(d, fmt, arg...)	dev_warn(d->dev, fmt, ##arg)
 #define cru_err(d, fmt, arg...)		dev_err(d->dev, fmt, ##arg)
+
+//#define DEBUG
+#ifdef DEBUG
+#define dprintk(fmt, arg...)		printk(fmt, ##arg)
+#else
+#define dprintk(fmt, arg...)
+#endif
 
 /**
  * struct rzg2l_cru_group - CRU CSI2 group information
