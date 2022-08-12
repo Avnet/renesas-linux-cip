@@ -1,0 +1,55 @@
+/*
+ * Copyright 2022 AVNET
+ *
+ * This program is free software; you can redistribute it and/or
+ * modify it under the terms of the GNU General Public License
+ * as published by the Free Software Foundation; either version 2
+ * of the License, or (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ * GNU General Public License for more details.
+ */
+
+/dts-v1/;
+/plugin/;
+
+&du {
+	dsi-lanes = <2>;
+	status = "okay";
+};
+
+&dsi0 {
+	status = "okay";
+	ports {
+		port@1 {
+			dsi0_out: endpoint {
+				remote-endpoint = <&panel_in>;
+				data-lanes = <1 2 3 4>;
+			};
+		};
+	};
+};
+
+&mipi_panel {
+	lcd-model = "ph720128t005";
+	status = "okay";
+	port {
+		panel_in: endpoint {
+			remote-endpoint = <&dsi0_out>;
+		};
+	};
+};
+
+&gpt5 {
+	status = "okay";
+};
+
+&backlight {
+	status = "okay";
+};
+
+&gt911 {
+	status = "okay";
+};

@@ -1,0 +1,83 @@
+/*
+ * Copyright 2022 AVNET
+ *
+ * This program is free software; you can redistribute it and/or
+ * modify it under the terms of the GNU General Public License
+ * as published by the Free Software Foundation; either version 2
+ * of the License, or (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ * GNU General Public License for more details.
+ */
+
+/dts-v1/;
+/plugin/;
+
+#include <dt-bindings/interrupt-controller/arm-gic.h>
+
+/* Disable scif22 and OSTM2 to be used in FreeRTOS on Cortex-M33 */
+
+/ {
+	compatible = "avnet,rzboard", "renesas,r9a07g054";
+	fragment@2 {
+		target-path = "/";
+		__overlay__ {
+			#address-cells = <2>;
+			#size-cells = <2>;
+
+			vring-ctl0@43000000 {
+				compatible = "vring_uio";
+				reg = <0x0 0x43000000 0x0 0x100000>;
+				no-map;
+			};
+
+			vring-ctl1@43100000 {
+				compatible = "vring_uio";
+				reg = <0x0 0x43100000 0x0 0x100000>;
+				no-map;
+			};
+
+			vring-shm0@43200000 {
+				compatible = "shm_uio";
+				reg = <0x0 0x43200000 0x0 0x300000>;
+				no-map;
+			};
+
+			vring-shm1@43500000 {
+				compatible = "shm_uio";
+				reg = <0x0 0x43500000 0x0 0x300000>;
+				no-map;
+			};
+
+			rsctbl@42f00000 {
+				compatible = "shm_uio";
+				reg = <0x0 0x42f00000 0x0 0x1000>;
+				no-map;
+			};
+
+			mhu-shm@42f01000 {
+				compatible = "shm_uio";
+				reg = <0x0 0x42f01000 0x0 0x1000>;
+				no-map;
+			};
+
+			mbox-uio@10400000 {
+				compatible = "mbox_uio";
+				reg = <0x0 0x10400000 0x0 0x1000>;
+				interrupt-parent = <&gic>;
+				interrupts = <GIC_SPI 75 IRQ_TYPE_LEVEL_HIGH>;
+				status = "okay";
+			};
+		};
+	};
+};
+
+&scif2 {
+	status = "disabled";
+};
+
+&ostm2 {
+	status = "disabled";
+};
