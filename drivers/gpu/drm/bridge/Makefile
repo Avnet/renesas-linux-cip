@@ -27,3 +27,4 @@ obj-$(CONFIG_DRM_NWL_MIPI_DSI) += nwl-dsi.o
 obj-y += analogix/
 obj-y += cadence/
 obj-y += synopsys/
+obj-$(CONFIG_DRM_ITE_IT6161) += it6161.o
