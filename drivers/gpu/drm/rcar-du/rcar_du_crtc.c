@@ -368,7 +368,7 @@ struct cpg_param resolution_param[TABLE_MAX] = {
 		/* 720p 74.25MHz	*/
 		/* frequency		*/	74250,
 		/* pl5_refdiv		*/	2,
-		/* pl5_intin		*/	74,
+		/* pl5_intin		*/	75,
 		/* pl5_fracin		*/	4194304,
 		/* pl5_postdiv1		*/	1,
 		/* pl5_postdiv2		*/	1,
@@ -420,8 +420,8 @@ struct cpg_param resolution_param[TABLE_MAX] = {
 		/* 1080p 148.5MHz	*/
 		/* frequency		*/	148500,
 		/* pl5_refdiv		*/	2,
-		/* pl5_intin		*/	148,
-		/* pl5_fracin		*/	8388608,
+		/* pl5_intin		*/	158,
+		/* pl5_fracin		*/	5242880,
 		/* pl5_postdiv1		*/	1,
 		/* pl5_postdiv2		*/	1,
 		/* pl5_divval		*/	0,
