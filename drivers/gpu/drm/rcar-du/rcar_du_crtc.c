@@ -431,6 +431,178 @@ struct cpg_param resolution_param[TABLE_MAX] = {
 	},
 };
 
+struct cpg_param resolution_param_2lane[TABLE_MAX] = {
+	{
+		/* VGA 25.175MHz	*/
+		/* frequency		*/	25175,
+		/* pl5_refdiv		*/	1,
+		/* pl5_intin		*/	25,
+		/* pl5_fracin		*/	2936012,
+		/* pl5_postdiv1		*/	1,
+		/* pl5_postdiv2		*/	1,
+		/* pl5_divval		*/	0,
+		/* pl5_spread		*/	0x16,
+		/* dsi_div_a		*/	3,	// 1/8
+		/* dsi_div_b		*/	2,	// 1/3
+	},
+	{
+		/* VGA 25.200MHz	*/
+		/* frequency		*/	25200,
+		/* pl5_refdiv		*/	1,
+		/* pl5_intin		*/	25,
+		/* pl5_fracin		*/	3355443,
+		/* pl5_postdiv1		*/	1,
+		/* pl5_postdiv2		*/	1,
+		/* pl5_divval		*/	0,
+		/* pl5_spread		*/	0x16,
+		/* dsi_div_a		*/	3,	// 1/8
+		/* dsi_div_b		*/	2,	// 1/3
+	},
+	{
+		/* 480p/576p 27.000MHz	*/
+		/* frequency		*/	27000,
+		/* pl5_refdiv		*/	1,
+		/* pl5_intin		*/	27,
+		/* pl5_fracin		*/	0,
+		/* pl5_postdiv1		*/	1,
+		/* pl5_postdiv2		*/	1,
+		/* pl5_divval		*/	0,
+		/* pl5_spread		*/	0x16,
+		/* dsi_div_a		*/	3,	// 1/8
+		/* dsi_div_b		*/	2,	// 1/3
+	},
+	{
+		/* 480p 27.027MHz	*/
+		/* frequency		*/	27027,
+		/* pl5_refdiv		*/	1,
+		/* pl5_intin		*/	27,
+		/* pl5_fracin		*/	452984,
+		/* pl5_postdiv1		*/	1,
+		/* pl5_postdiv2		*/	1,
+		/* pl5_divval		*/	0,
+		/* pl5_spread		*/	0x16,
+		/* dsi_div_a		*/	3,	// 1/8
+		/* dsi_div_b		*/	2,	// 1/3
+	},
+	{
+		/* WVGA 29.605MHz	*/
+		/* frequency		*/	29605,
+		/* pl5_refdiv		*/	1,
+		/* pl5_intin		*/	29,
+		/* pl5_fracin		*/	10150216,
+		/* pl5_postdiv1		*/	1,
+		/* pl5_postdiv2		*/	1,
+		/* pl5_divval		*/	0,
+		/* pl5_spread		*/	0x16,
+		/* dsi_div_a		*/	3,	// 1/8
+		/* dsi_div_b		*/	2,	// 1/3
+	},
+	{
+		/* SVGA 40.00MHz	*/
+		/* frequency		*/	40000,
+		/* pl5_refdiv		*/	1,
+		/* pl5_intin		*/	40,
+		/* pl5_fracin		*/	0,
+		/* pl5_postdiv1		*/	1,
+		/* pl5_postdiv2		*/	1,
+		/* pl5_divval		*/	0,
+		/* pl5_spread		*/	0x16,
+		/* dsi_div_a		*/	3,	// 1/8
+		/* dsi_div_b		*/	2,	// 1/3
+	},
+	{
+		/* XGA	65.00MHz	*/
+		/* frequency		*/	65000,
+		/* pl5_refdiv		*/	1,
+		/* pl5_intin		*/	65,
+		/* pl5_fracin		*/	0,
+		/* pl5_postdiv1		*/	1,
+		/* pl5_postdiv2		*/	1,
+		/* pl5_divval		*/	0,
+		/* pl5_spread		*/	0x16,
+		/* dsi_div_a		*/	3,	// 1/8
+		/* dsi_div_b		*/	2,	// 1/3
+	},
+	{
+		/* WXGA 1280x800 71.0MHz	*/
+		/* frequency		*/	71000,
+		/* pl5_refdiv		*/	1,
+		/* pl5_intin		*/	71,
+		/* pl5_fracin		*/	0,
+		/* pl5_postdiv1		*/	1,
+		/* pl5_postdiv2		*/	1,
+		/* pl5_divval		*/	0,
+		/* pl5_spread		*/	0x16,
+		/* dsi_div_a		*/	3,	// 1/8
+		/* dsi_div_b		*/	2,	// 1/3
+	},
+	{
+		/* 720p 74.176MHz	*/
+		/* frequency		*/	74176,
+		/* pl5_refdiv		*/	1,
+		/* pl5_intin		*/	74,
+		/* pl5_fracin		*/	2952790,
+		/* pl5_postdiv1		*/	1,
+		/* pl5_postdiv2		*/	1,
+		/* pl5_divval		*/	0,
+		/* pl5_spread		*/	0x16,
+		/* dsi_div_a		*/	3,	// 1/8
+		/* dsi_div_b		*/	2,	// 1/3
+	},
+	{
+		/* 720p 74.25MHz	*/
+		/* frequency		*/	74250,
+		/* pl5_refdiv		*/	1,
+		/* pl5_intin		*/	74,
+		/* pl5_fracin		*/	4194304,
+		/* pl5_postdiv1		*/	1,
+		/* pl5_postdiv2		*/	1,
+		/* pl5_divval		*/	0,
+		/* pl5_spread		*/	0x16,
+		/* dsi_div_a		*/	3,	// 1/8
+		/* dsi_div_b		*/	2,	// 1/3
+	},
+	{
+		/* FWXGA 1360x768 85.5MHz	*/
+		/* frequency		*/	85500,
+		/* pl5_refdiv		*/	1,
+		/* pl5_intin		*/	85,
+		/* pl5_fracin		*/	8388608,
+		/* pl5_postdiv1		*/	1,
+		/* pl5_postdiv2		*/	1,
+		/* pl5_divval		*/	0,
+		/* pl5_spread		*/	0x16,
+		/* dsi_div_a		*/	3,	// 1/8
+		/* dsi_div_b		*/	2,	// 1/3
+	},
+	{
+		/* WXGA+ 1440x900 88.75MHz		*/
+		/* frequency		*/	88750,
+		/* pl5_refdiv		*/	1,
+		/* pl5_intin		*/	88,
+		/* pl5_fracin		*/	12582912,
+		/* pl5_postdiv1		*/	1,
+		/* pl5_postdiv2		*/	1,
+		/* pl5_divval		*/	0,
+		/* pl5_spread		*/	0x16,
+		/* dsi_div_a		*/	3,	// 1/8
+		/* dsi_div_b		*/	2,	// 1/3
+	},
+	{
+		/* SXGA 108.0MHz	*/
+		/* frequency		*/	108000,
+		/* pl5_refdiv		*/	1,
+		/* pl5_intin		*/	108,
+		/* pl5_fracin		*/	0,
+		/* pl5_postdiv1		*/	1,
+		/* pl5_postdiv2		*/	1,
+		/* pl5_divval		*/	0,
+		/* pl5_spread		*/	0x16,
+		/* dsi_div_a		*/	3,	// 1/8
+		/* dsi_div_b		*/	2,	// 1/3
+	},
+};
+
 struct cpg_param resolution_param_parallel[TABLE_PARALLEL_MAX] = {
 	{
 		/* VGA 25.175MHz	*/
@@ -593,6 +765,7 @@ static void rcar_du_crtc_set_display_timing(struct rcar_du_crtc *rcrtc)
 		u32 tableMax;
 		struct cpg_param *paramPtr;
 		u32 val, nowLcdcClkOn;
+		unsigned long clk_pll5;
 
 		if (of_machine_is_compatible("renesas,r9a07g043")) {
 			parallelOut = 1;
@@ -600,8 +773,16 @@ static void rcar_du_crtc_set_display_timing(struct rcar_du_crtc *rcrtc)
 			paramPtr = resolution_param_parallel;
 		} else {
 			parallelOut = 0;
-			tableMax = TABLE_MAX;
-			paramPtr = resolution_param;
+			if( rcdu->dsi_lanes == 2 ) {
+				tableMax = TABLE_MAX - 1;
+				paramPtr = resolution_param_2lane;
+				clk_pll5 = 0x10000; //SEL_PLL5_1 clock
+			} else {
+				/* support 4-lane MIPI DSI */
+				tableMax = TABLE_MAX;
+				paramPtr = resolution_param;
+				clk_pll5 = 0x10001; //SEL_PLL5_3 clock
+			}
 		}
 
 		for (i = 0; i < tableMax; i++) {
@@ -674,7 +855,7 @@ static void rcar_du_crtc_set_display_timing(struct rcar_du_crtc *rcrtc)
 				val = reg_read(cpg_base + CPG_CPG_CLKSTATUS);
 			} while ((val & DIVDSILPCLK_STS) != 0);
 			/* SEL_PLL5_3 clock */
-			reg_write(cpg_base + CPG_OTHERFUNC1_REG, 0x10001);
+			reg_write(cpg_base + CPG_OTHERFUNC1_REG, clk_pll5); //SEL_PLL5_4 Route Setting
 			/* DIV_DSI_A, DIV_DSI_B */
 			reg_write(cpg_base + CPG_PL5_SDIV, 0x01010000 |
 				 (paramPtr[index].dsi_div_a << 0) |

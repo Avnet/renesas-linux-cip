@@ -551,7 +551,6 @@ static int ili9881c_prepare(struct drm_panel *panel)
 
 
 	ili9881c_reset(tftcp);
-	ili9881c_getID(tftcp);
 
 	return 0;
 }
@@ -610,6 +609,7 @@ static int ili9881c_enable(struct drm_panel *panel)
             return ret;
     }
 	dev_dbg(&tftcp->dsi->dev,"%s\n",__func__);
+	ili9881c_getID(tftcp);
 
 	return 0;
 }
