@@ -227,7 +227,24 @@ struct cpg_param {
 #define	TABLE_MAX		14
 #define	TABLE_PARALLEL_MAX	11
 #define reg_write(x, a)		iowrite32(a, x)
+#define	reg_read(x)		ioread32(x)
 #define CPG_LPCLK_DIV		0
+#define	CPG_SIPPL3_CLK5		(0x0134)
+#define	CPG_SIPLL5_STBY		(0x0140)
+#define	CPG_SIPLL5_CLK1		(0x0144)
+#define	CPG_SIPLL5_CLK3		(0x014C)
+#define	CPG_SIPLL5_CLK4		(0x0150)
+#define	CPG_SIPLL5_CLK5		(0x0154)
+#define	CPG_SIPLL5_MON		(0x015C)
+#define	CPG_PL2_DDIV		(0x0204)
+#define	CPG_CPG_CLKSTATUS	(0x0280)
+#define	CPG_PL5_SDIV		(0x0420)
+#define	CPG_OTHERFUNC1_REG	(0x0BE8)
+#define	CPG_CLKON_LCDC		(0x056c)
+#define	CPG_CLKMON_LCDC		(0x06EC)
+
+#define	PLL5_MON_PLL5_LOCK	(1 << 4)
+#define	DIVDSILPCLK_STS		(1 << 7)
 
 struct cpg_param resolution_2_lanes_param[TABLE_MAX - 1] = {
 	{ 25175, 2,  50,  5872025, 1, 1, 0, 0x16, 1, 5}, /* VGA 25.175MHz */
@@ -309,6 +326,7 @@ static void rcar_du_crtc_set_display_timing(struct rcar_du_crtc *rcrtc)
 		u32 parallelOut;
 		u32 tableMax;
 		struct cpg_param *paramPtr;
+		u32 val, nowLcdcClkOn;
 
 		if (of_machine_is_compatible("renesas,r9a07g043")) {
 			parallelOut = 1;
@@ -338,9 +356,6 @@ static void rcar_du_crtc_set_display_timing(struct rcar_du_crtc *rcrtc)
 			default:
 				return;
 			}
-
-			/* CPG_OTHERFUNC1_REG: SEL_PLL5_3 clock */
-			reg_write(cpg_base + 0xbe8, 0x10001);
 		}
 
 		for (i = 0; i < tableMax; i++) {
@@ -363,31 +378,79 @@ static void rcar_du_crtc_set_display_timing(struct rcar_du_crtc *rcrtc)
 		if (i == tableMax)
 			index = tableMax - 1;
 
-		/* CPG_PL2_DDIV: DIV_DSI_LPCLK */
-		reg_write(cpg_base + 0x0204, 0x10000000 |
-			 (CPG_LPCLK_DIV << 12));
-		/* CPG_PL5_SDIV: DIV_DSI_A, DIV_DSI_B */
-		reg_write(cpg_base + 0x0420, 0x01010000 |
-			 (paramPtr[index].dsi_div_a << 0) |
-			 (paramPtr[index].dsi_div_b << 8));
-		/* CPG_PLL5_CLK1: POSTDIV1, POSTDIV2, REFDIV */
-		reg_write(cpg_base + 0x0144, 0x01110000 |
+		if ((parallelOut == 0) && (paramPtr[i].frequency > 74250))
+			reg_write(cpg_base + CPG_SIPPL3_CLK5, 0x02);
+
+		val = reg_read(cpg_base + CPG_CLKON_LCDC);
+		if (val != 0)
+			nowLcdcClkOn = 1;
+		else
+			nowLcdcClkOn = 0;
+
+		if (nowLcdcClkOn) {
+			/* LCDC Clock Off */
+			reg_write(cpg_base + CPG_CLKON_LCDC, 0x30000);
+			do {
+				val = reg_read(cpg_base + CPG_CLKMON_LCDC);
+			} while(val != 0);
+		}
+
+		/* RESETB = 0 Reset State */
+		reg_write(cpg_base + CPG_SIPLL5_STBY, 0x10000);
+		do {
+			val = reg_read(cpg_base + CPG_SIPLL5_MON);
+		} while ((val & PLL5_MON_PLL5_LOCK) != 0);
+
+		/* POSTDIV1, POSTDIV2, REFDIV */
+		reg_write(cpg_base + CPG_SIPLL5_CLK1, 0x01110000 |
 			 (paramPtr[index].pl5_postdiv1 << 0) |
 			 (paramPtr[index].pl5_postdiv2 << 4) |
 			 (paramPtr[index].pl5_refdiv << 8));
-		/* CPG_PLL5_CLK3: DIVVAL=6, FRACIN */
-		reg_write(cpg_base + 0x014C,
+		/* DIVVAL, FRACIN */
+		reg_write(cpg_base + CPG_SIPLL5_CLK3,
 			 (paramPtr[index].pl5_divval << 0) |
 			 (paramPtr[index].pl5_fracin << 8));
-		/* CPG_PLL5_CLK4: INTIN */
-		reg_write(cpg_base + 0x0150, 0x000000ff |
+		/* INTIN */
+		reg_write(cpg_base + CPG_SIPLL5_CLK4, 0x000000ff |
 			 (paramPtr[index].pl5_intin << 16));
-		/* CPG_PLL5_CLK5: SPREAD */
-		reg_write(cpg_base + 0x0154,
+		/* SPREAD */
+		reg_write(cpg_base + CPG_SIPLL5_CLK5,
 			 (paramPtr[index].pl5_spread << 0));
 
-		/* CPG_PLL5_STBY: RESETB=1 */
-		reg_write(cpg_base + 0x0140, 0x00150001);
+		if (parallelOut == 0) {
+			do {
+				val = reg_read(cpg_base + CPG_CPG_CLKSTATUS);
+			} while ((val & DIVDSILPCLK_STS) != 0);
+			/* DIV_DSI_LPCLK */
+			reg_write(cpg_base + CPG_PL2_DDIV, 0x10000000 |
+				 (CPG_LPCLK_DIV << 12));
+			do {
+				val = reg_read(cpg_base + CPG_CPG_CLKSTATUS);
+			} while ((val & DIVDSILPCLK_STS) != 0);
+			/* SEL_PLL5_3 clock */
+			reg_write(cpg_base + CPG_OTHERFUNC1_REG, 0x10001);
+			/* DIV_DSI_A, DIV_DSI_B */
+			reg_write(cpg_base + CPG_PL5_SDIV, 0x01010000 |
+				 (paramPtr[index].dsi_div_a << 0) |
+				 (paramPtr[index].dsi_div_b << 8));
+		} else {
+			/* DIV_DSI_A, DIV_DSI_B */
+			reg_write(cpg_base + CPG_PL5_SDIV, 0x01010000 |
+				 (paramPtr[index].dsi_div_a << 0) |
+				 (paramPtr[index].dsi_div_b << 8));
+		}
+		reg_write(cpg_base + CPG_SIPLL5_STBY, 0x00050001);
+		do {
+			val = reg_read(cpg_base + CPG_SIPLL5_MON);
+		} while ((val & PLL5_MON_PLL5_LOCK) == 0);
+
+		if (nowLcdcClkOn) {
+			/*  LCDC Clock On */
+			reg_write(cpg_base + CPG_CLKON_LCDC, 0x30003);
+			do {
+				val = reg_read(cpg_base + CPG_CLKMON_LCDC);
+			} while(val == 0);
+		}
 
 		iounmap(cpg_base);
 
