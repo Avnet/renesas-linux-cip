@@ -1553,6 +1553,7 @@
 					 <&cpg CPG_MOD R9A07G054_STPAI_ACLK_DRP>;
 			resets = <&cpg R9A07G054_STPAI_ARESETN>;
 			power-domains = <&cpg>;
+			sysctrl = <&sysc>;
 			clock-names = "intclk","aclk_drp","mclk","dclkin","aclk";
 			interrupts = <GIC_SPI 440 IRQ_TYPE_LEVEL_HIGH>,
 						 <GIC_SPI 441 IRQ_TYPE_LEVEL_HIGH>,

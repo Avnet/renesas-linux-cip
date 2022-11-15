@@ -1,5 +1,5 @@
 /*
- * Driver for the Renesas RZ/V2L DRP-AI unit
+ * Driver for the Renesas RZ/V2M RZ/V2MA RZ/V2L DRP-AI unit
  *
  * Copyright (C) 2021 Renesas Electronics Corporation
  *
@@ -19,7 +19,7 @@
 
 #ifdef __KERNEL__
 #include <linux/types.h>
-#include <linux/semaphore.h>
+#include <asm/current.h>
 #else /* __KERNEL__ */
 #include "r_typedefs.h"
 #endif /* __KERNEL__ */
@@ -37,39 +37,31 @@
 #define R_DRPAI_ERR_INVALID_ARG         (-1)
 #define R_DRPAI_ERR_RESET               (-2)
 
+#define DEVICE_RZV2M                    (0)
+#define DEVICE_RZV2MA                   (1)
+#define DEVICE_RZV2L                    (2)
+
+#if defined(CONFIG_ARCH_R9A09G011GBG) || defined(CONFIG_ARCH_R9A09G055MA3GBG)
+/* V2M(A) conditional compilation */
+#define CPG_RESET_SUCCESS               (0)
+#elif defined(CONFIG_ARCH_R9A07G054)
+/* V2L conditional compilation */
+#define CPG_RESET_SUCCESS               (1)
+#endif 
+
 #define RST_CPG_WAIT (10)
 #define RST_MAX_TIMEOUT (100)
 
+/* Debug macro */
 // #define   DRPAI_DRV_DEBUG
 #ifdef  DRPAI_DRV_DEBUG
-#define DRPAI_DEBUG_PRINT(...)      printk(__VA_ARGS__)
+#define DRPAI_DEBUG_PRINT(fmt, ...) \
+            pr_info("[%s: %d](pid: %d) "fmt, \
+                            __func__, __LINE__, current->pid, ##__VA_ARGS__)
 #else
 #define DRPAI_DEBUG_PRINT(...)
 #endif
 
-/* Type definitions */
-struct drpai_priv {
-    struct platform_device *pdev;
-    const char *dev_name;
-    drpai_status_t drpai_status;
-    spinlock_t lock;
-    struct semaphore sem;
-    refcount_t count;
-    void __iomem *drp_base;
-    void __iomem *aimac_base;
-    struct clk *clk_int;
-    struct clk *clk_aclk_drp;
-    struct clk *clk_mclk;
-    struct clk *clk_dclkin;
-    struct clk *clk_aclk;
-    struct reset_control *rstc;
-    uint32_t aimac_irq_flag;
-/* ISP */
-    void (*isp_finish_loc)(int);
-/* ISP */
-};
-
-/* ISP */
 typedef struct drpai_odif_intcnto
 {
     uint32_t    ch0;
@@ -77,21 +69,24 @@ typedef struct drpai_odif_intcnto
     uint32_t    ch2;
     uint32_t    ch3;
 } drpai_odif_intcnto_t;
-/* ISP */
 
-int32_t R_DRPAI_DRP_Open(int32_t ch);
-int32_t R_DRPAI_DRP_Start(int32_t ch, uint32_t desc);
-/* ISP */
-int32_t R_DRPAI_DRP_Nmlint(int32_t ch, drpai_odif_intcnto_t *odif_intcnto);
-/* ISP */
-int32_t R_DRPAI_DRP_Errint(int32_t ch);
-int32_t R_DRPAI_AIMAC_Open(int32_t ch);
-int32_t R_DRPAI_AIMAC_Start(int32_t ch, uint32_t desc);
-int32_t R_DRPAI_AIMAC_Nmlint(int32_t ch);
-int32_t R_DRPAI_AIMAC_Errint(int32_t ch);
-int32_t R_DRPAI_Status(int32_t ch, drpai_status_t *drpai_status);
-int32_t R_DRPAI_DRP_Reset(int32_t ch);
-int32_t R_DRPAI_AIMAC_Reset(int32_t ch);
-int32_t R_DRPAI_CPG_Reset(void);
+int32_t R_DRPAI_DRP_Open(void __iomem *drp_base_addr, int32_t ch, spinlock_t *lock);
+int32_t R_DRPAI_DRP_Start(void __iomem *drp_base_addr, int32_t ch, uint32_t desc);
+int32_t R_DRPAI_DRP_Nmlint(void __iomem *drp_base_addr, int32_t ch, drpai_odif_intcnto_t *odif_intcnto);
+int32_t R_DRPAI_DRP_Errint(void __iomem *drp_base_addr, void __iomem *aimac_base_addr, int32_t ch);
+int32_t R_DRPAI_AIMAC_Open(void __iomem *aimac_base_addr, int32_t ch);
+int32_t R_DRPAI_AIMAC_Start(void __iomem *aimac_base_addr, int32_t ch, uint32_t desc, spinlock_t *lock);
+int32_t R_DRPAI_AIMAC_Nmlint(void __iomem *aimac_base_addr, int32_t ch);
+int32_t R_DRPAI_AIMAC_Errint(void __iomem *drp_base_addr, void __iomem *aimac_base_addr, int32_t ch);
+int32_t R_DRPAI_Status(void __iomem *drp_base_addr, void __iomem *aimac_base_addr, int32_t ch, drpai_status_t *drpai_status);
+int32_t R_DRPAI_DRP_Reset(void __iomem *drp_base_addr, void __iomem *aimac_base_addr, int32_t ch, spinlock_t *lock);
+int32_t R_DRPAI_AIMAC_Reset(void __iomem *aimac_base_addr, int32_t ch);
+int32_t R_DRPAI_CPG_Reset(struct reset_control *rst_ctrl);
+int32_t R_DRPB_DRP_Open(void __iomem *drp_base_addr, int32_t ch, spinlock_t *lock);
+int32_t R_DRPB_Status(void __iomem *drp_base_addr, int32_t ch, drpai_status_t *drpai_status);
+int32_t R_DRPB_DRP_Reset(void __iomem *drp_base_addr, int32_t ch, spinlock_t *lock);
+int32_t R_DRPB_CPG_Reset(struct reset_control *rst_ctrl);
+int32_t R_DRPB_DRP_Nmlint(void __iomem *drp_base_addr, int32_t ch, drpai_odif_intcnto_t *odif_intcnto);
+int32_t R_DRPB_DRP_Errint(void __iomem *drp_base_addr, int32_t ch);
 
 #endif /* R_DRPAI_CORE_H */

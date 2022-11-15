@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: GPL-2.0 WITH Linux-syscall-note */
 /*
- * Driver for the Renesas RZ/V2L DRP-AI unit
+ * Driver for the Renesas RZ/V2M RZ/V2MA RZ/V2L DRP-AI unit
  *
  * Copyright (C) 2021 Renesas Electronics Corporation
  *
@@ -34,6 +34,7 @@
 #define DRPAI_ASSIGN_PARAM          _IOW (DRPAI_IO_TYPE, 6, drpai_assign_param_t)
 #define DRPAI_PREPOST_CROP          _IOW (DRPAI_IO_TYPE, 7, drpai_crop_t)
 #define DRPAI_PREPOST_INADDR        _IOW (DRPAI_IO_TYPE, 8, drpai_inout_t)
+#define DRPAI_SET_SEQ               _IOW (DRPAI_IO_TYPE, 6, drpai_seq_t)
 
 #define DRPAI_INDEX_NUM             (7)
 #define DRPAI_INDEX_INPUT           (0)
@@ -51,6 +52,10 @@
 #define DRPAI_ERRINFO_AIMAC_ERR     (-2)
 #define DRPAI_ERRINFO_RESET         (-3)
 #define DRPAI_RESERVED_NUM          (10)
+#define DRPAI_SEQ_NUM               (20)
+#define DRPAI_EXE_AI                (1)
+#define DRPAI_EXE_DRP               (2)
+#define DRPAI_DRP_NOLOAD            (0)
 #define DRPAI_MAX_NODE_NAME         (256)
 
 #ifdef __cplusplus
@@ -91,6 +96,12 @@ typedef struct drpai_inout
     drpai_data_t data;
     drpai_data_t obj;
 } drpai_inout_t;
+
+typedef struct drpai_seq
+{
+    uint32_t        num;
+    uint32_t        order[DRPAI_SEQ_NUM];
+} drpai_seq_t;
 
 #ifdef __cplusplus
 }

@@ -1,5 +1,5 @@
 /*
- * Driver for the Renesas RZ/V2L DRP-AI unit
+ * Driver for the Renesas RZ/V2M RZ/V2MA RZ/V2L DRP-AI unit
  *
  * Copyright (C) 2021 Renesas Electronics Corporation
  *
@@ -39,10 +39,8 @@
 #define ODIF_DMACTLO2                   (0x81A300)
 #define ODIF_DMACTLO3                   (0x81A400)
 #define ODIF_DMACTLCR                   (0x81A900)
-/* ISP */
 /* Normal Interrupt mask */
 #define ODIF_INTMSK                     (0x81A004)
-/* ISP */
 /* Err Interrupt mask */
 #define IDIF_EINTMSK                    (0x81900C)
 #define IDIF_EINTMSK_DSC                (0x819014)
@@ -55,7 +53,6 @@
 --------------------------------------------------------------------------------------------------*/
 #define DSCC_DPA                        (0x818108)
 #define DSCC_DCTL                       (0x818100)
-/* ISP */
 /*--------------------------------------------------------------------------------------------------
   DPP NMLINT register
 --------------------------------------------------------------------------------------------------*/
@@ -64,7 +61,6 @@
 #define ODIF_INTCNTO1                   (0x81A218)
 #define ODIF_INTCNTO2                   (0x81A318)
 #define ODIF_INTCNTO3                   (0x81A418)
-/* ISP */
 /*--------------------------------------------------------------------------------------------------
   DRP ERRINT register
 --------------------------------------------------------------------------------------------------*/
@@ -231,6 +227,25 @@
 #define SYNCTBL_TBL13                   (0x140834)
 #define SYNCTBL_TBL14                   (0x140838)
 #define SYNCTBL_TBL15                   (0x14083C)
+/*--------------------------------------------------------------------------------------------------
+  DRP Reset register
+--------------------------------------------------------------------------------------------------*/
+#define DRP_SYNCTBL_TBL0                (0x81E000)
+#define DRP_SYNCTBL_TBL1                (0x81E004)
+#define DRP_SYNCTBL_TBL2                (0x81E008)
+#define DRP_SYNCTBL_TBL3                (0x81E00C)
+#define DRP_SYNCTBL_TBL4                (0x81E010)
+#define DRP_SYNCTBL_TBL5                (0x81E014)
+#define DRP_SYNCTBL_TBL6                (0x81E018)
+#define DRP_SYNCTBL_TBL7                (0x81E01C)
+#define DRP_SYNCTBL_TBL8                (0x81E020)
+#define DRP_SYNCTBL_TBL9                (0x81E024)
+#define DRP_SYNCTBL_TBL10               (0x81E028)
+#define DRP_SYNCTBL_TBL11               (0x81E02C)
+#define DRP_SYNCTBL_TBL12               (0x81E030)
+#define DRP_SYNCTBL_TBL13               (0x81E034)
+#define DRP_SYNCTBL_TBL14               (0x81E038)
+#define DRP_SYNCTBL_TBL15               (0x81E03C)
 /*--------------------------------------------------------------------------------------------------
   DRP-AI Internal state register
 --------------------------------------------------------------------------------------------------*/

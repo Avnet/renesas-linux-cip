@@ -2,7 +2,7 @@
 # DRP-AI subsystem configuration
 #
 
-menu "DRP-AI support"
+menu "DRP-AI/DRP support"
 
 config DRPAI
 	tristate "DRP-AI support"
