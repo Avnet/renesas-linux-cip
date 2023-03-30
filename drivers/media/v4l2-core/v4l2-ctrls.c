@@ -19,6 +19,11 @@
 #include <media/v4l2-fwnode.h>
 #include <media/v4l2-ioctl.h>
 
+// #ifdef ENABLE_ISP
+#include <linux/isp_ctrl.h>
+#include <uapi/linux/renesas-v4l2-controls.h>
+// #endif // ENABLE_ISP
+
 #define dprintk(vdev, fmt, arg...) do {					\
 	if (!WARN_ON(!(vdev)) && ((vdev)->dev_debug & V4L2_DEV_DEBUG_CTRL)) \
 		printk(KERN_DEBUG pr_fmt("%s: %s: " fmt),		\
@@ -3731,6 +3736,21 @@ static int v4l2_g_ext_ctrls_common(struct v4l2_ctrl_handler *hdl,
 		do {
 			struct v4l2_ctrl_ref *ref = helpers[idx].ref;
 
+// #ifndef ENABLE_ISP
+			if(ISP_CTRL_RUN==isp_ctrl_get_run_state()){
+				ret = isp_ctrl_g_ext_ctrl(cs->controls + idx);
+			}else{
+				if (is_default)
+					ret = def_to_user(cs->controls + idx, ref->ctrl);
+				else if (is_request && ref->valid_p_req)
+					ret = req_to_user(cs->controls + idx, ref);
+				else if (is_volatile)
+					ret = new_to_user(cs->controls + idx, ref->ctrl);
+				else
+					ret = cur_to_user(cs->controls + idx, ref->ctrl);
+			}
+// #endif // ENABLE_ISP
+#if 0
 			if (is_default)
 				ret = def_to_user(cs->controls + idx, ref->ctrl);
 			else if (is_request && ref->valid_p_req)
@@ -3739,6 +3759,7 @@ static int v4l2_g_ext_ctrls_common(struct v4l2_ctrl_handler *hdl,
 				ret = new_to_user(cs->controls + idx, ref->ctrl);
 			else
 				ret = cur_to_user(cs->controls + idx, ref->ctrl);
+#endif // 0
 			idx = helpers[idx].next;
 		} while (!ret && idx);
 
@@ -3917,6 +3938,9 @@ static int try_or_set_cluster(struct v4l2_fh *fh, struct v4l2_ctrl *master,
 	bool update_flag;
 	int ret;
 	int i;
+//#ifdef ENABLE_ISP
+	bool cru_flag=0;
+//#endif
 
 	/* Go through the cluster and either validate the new value or
 	   (if no new value was set), copy the current value to the new
@@ -3940,10 +3964,36 @@ static int try_or_set_cluster(struct v4l2_fh *fh, struct v4l2_ctrl *master,
 
 	ret = call_op(master, try_ctrl);
 
-	/* Don't set if there is no change */
-	if (ret || !set || !cluster_changed(master))
-		return ret;
-	ret = call_op(master, s_ctrl);
+//#ifdef ENABLE_ISP
+	if(ISP_CTRL_RUN==isp_ctrl_get_run_state()){
+		if(fh != NULL){
+			if(0==strncmp(fh->vdev->name,"CRU output",10)){
+				cru_flag = 1;
+			}
+		}
+		if(cru_flag){
+			if (ret || !set)
+				return ret;
+			master->cluster[0]->has_changed = true;
+			ret = isp_ctrl_s_ctrl(master->ops->s_ctrl, master);
+		}else{
+			/* Don't set if there is no change */
+			if (ret || !set || !cluster_changed(master))
+				return ret;
+			ret = call_op(master, s_ctrl);
+		}
+	}else{
+		/* Don't set if there is no change */
+		if (ret || !set || !cluster_changed(master))
+			return ret;
+		ret = call_op(master, s_ctrl);
+	}
+//#else
+//	/* Don't set if there is no change */
+//	if (ret || !set || !cluster_changed(master))
+//		return ret;
+//	ret = call_op(master, s_ctrl);
+//#endif //ENABLE_ISP
 	if (ret)
 		return ret;
 

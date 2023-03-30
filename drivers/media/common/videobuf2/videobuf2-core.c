@@ -30,6 +30,15 @@
 #include <media/v4l2-mc.h>
 
 #include <trace/events/vb2.h>
+// #ifdef ENABLE_ISP
+#include <linux/isp_ctrl.h>
+//#define VB2_CORE_DEBUG
+#ifdef VB2_CORE_DEBUG
+#define ispprintk(fmt, arg...)		printk(fmt, ##arg)
+#else
+#define ispprintk(fmt, arg...)
+#endif
+// #endif // ENABLE_ISP
 
 static int debug;
 module_param(debug, int, 0644);
@@ -1039,7 +1048,16 @@ void vb2_buffer_done(struct vb2_buffer *vb, enum vb2_buffer_state state)
 		return;
 	default:
 		/* Inform any processes that may be waiting for buffers */
-		wake_up(&q->done_wq);
+// #ifdef ENABLE_ISP
+		//wake_up(&q->done_wq);
+		if(ISP_CTRL_RUN==isp_ctrl_get_run_state()){
+			ispprintk("%s: wakeup isp\n", __func__);
+			q_head = &q->done_wq;
+		}else{
+			ispprintk("%s: wakeup without isp\n", __func__);
+			wake_up(&q->done_wq);
+		}
+// #endif // ENABLE_ISP
 		break;
 	}
 }
@@ -1723,6 +1741,22 @@ int vb2_core_qbuf(struct vb2_queue *q, unsigned int index, void *pb,
 }
 EXPORT_SYMBOL_GPL(vb2_core_qbuf);
 
+// #ifdef ENABLE_ISP
+static int chk_isp_wakeup( const struct list_head *list )
+{
+	int ret = 0;
+	if (!list_empty(list)) {
+		struct vb2_buffer *vb_tmp;
+		vb_tmp = list_first_entry(list, struct vb2_buffer, done_entry);
+		if( isp_ctrl_chk_index_complete(vb_tmp->index) )
+		{
+			ret = 1;
+		}
+	}
+	return ret;
+}
+// #endif // ENABLE_ISP
+
 /*
  * __vb2_wait_for_done_vb() - wait for a buffer to become available
  * for dequeuing
@@ -1763,12 +1797,18 @@ static int __vb2_wait_for_done_vb(struct vb2_queue *q, int nonblocking)
 			return -EPIPE;
 		}
 
-		if (!list_empty(&q->done_list)) {
-			/*
-			 * Found a buffer that we were waiting for.
-			 */
+// #ifdef ENABLE_ISP
+//		if (!list_empty(&q->done_list)) {
+//			/*
+//			 * Found a buffer that we were waiting for.
+//			 */
+//			break;
+//		}
+		if( chk_isp_wakeup(&q->done_list) )
+		{
 			break;
 		}
+// #endif // ENABLE_ISP
 
 		if (nonblocking) {
 			dprintk(q, 3, "nonblocking and no buffers to dequeue, will not wait\n");
@@ -1787,9 +1827,14 @@ static int __vb2_wait_for_done_vb(struct vb2_queue *q, int nonblocking)
 		 * All locks have been released, it is safe to sleep now.
 		 */
 		dprintk(q, 3, "will sleep waiting for buffers\n");
+// #ifdef ENABLE_ISP
+//		ret = wait_event_interruptible(q->done_wq,
+//				!list_empty(&q->done_list) || !q->streaming ||
+//				q->error);
 		ret = wait_event_interruptible(q->done_wq,
-				!list_empty(&q->done_list) || !q->streaming ||
+				chk_isp_wakeup(&q->done_list) || !q->streaming ||
 				q->error);
+// #endif // ENABLE_ISP
 
 		/*
 		 * We need to reevaluate both conditions again after reacquiring
