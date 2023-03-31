@@ -1,0 +1,51 @@
+/*
+ * Copyright 2022 AVNET
+ *
+ * This program is free software; you can redistribute it and/or
+ * modify it under the terms of the GNU General Public License
+ * as published by the Free Software Foundation; either version 2
+ * of the License, or (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ * GNU General Public License for more details.
+ */
+
+/dts-v1/;
+/plugin/;
+
+#include <dt-bindings/pinctrl/rzg2l-pinctrl.h>
+
+/* 40-pin extended GPIO, expanded into UART, SPI, I2C, PWM and other interfaces */
+
+&pinctrl {
+	can0_pins: can0 {
+		pinmux = <RZG2L_PORT_PINMUX(10, 1, 2)>, /* TX */
+			 <RZG2L_PORT_PINMUX(11, 0, 2)>; /* RX */
+	};
+
+	can1_pins: can1 {
+		pinmux = <RZG2L_PORT_PINMUX(12, 1, 2)>, /* TX */
+			 <RZG2L_PORT_PINMUX(13, 0, 2)>; /* RX */
+	};
+};
+
+&canfd {
+	pinctrl-0 = <&can0_pins>, <&can1_pins>;
+	pinctrl-names = "default";
+	status = "okay";
+
+	/* Default set as Classical CAN(CAN 2.0) mode, remove to enable CAN FD mode */
+	renesas,no-can-fd;
+
+	/* CAN on 40pin header without transceiver */
+	channel0 {
+		status = "okay";
+	};
+
+	/* CAN on J18 with transceiver */
+	channel1 {
+		status = "okay";
+	};
+};

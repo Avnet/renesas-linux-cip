@@ -1,0 +1,45 @@
+/*
+ * Copyright 2022 AVNET
+ *
+ * This program is free software; you can redistribute it and/or
+ * modify it under the terms of the GNU General Public License
+ * as published by the Free Software Foundation; either version 2
+ * of the License, or (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ * GNU General Public License for more details.
+ */
+
+/dts-v1/;
+/plugin/;
+
+#include <dt-bindings/pinctrl/rzg2l-pinctrl.h>
+
+/* 40-pin extended GPIO, expanded into UART, SPI, I2C, PWM and other interfaces */
+
+&pinctrl {
+	spi1_pins: spi1 {
+		pinmux = <RZG2L_PORT_PINMUX(44, 0, 1)>, /* CK */
+			 <RZG2L_PORT_PINMUX(44, 1, 1)>, /* MOSI */
+			 <RZG2L_PORT_PINMUX(44, 2, 1)>, /* MISO */
+			 <RZG2L_PORT_PINMUX(44, 3, 1)>; /* SSL */
+	};
+};
+
+&spi1 {
+	pinctrl-0 = <&spi1_pins>;
+	pinctrl-names = "default";
+	dmas = <&dmac 0x2e99>, <&dmac 0x2e9a>;
+	dma-names = "tx", "rx";
+	status = "okay";
+
+	#address-cells = <1>;
+	#size-cells = <0>;
+	spidev@0 {
+		compatible = "semtech,sx1301";
+		reg = <0>;
+		spi-max-frequency = <2000000>;
+	};
+};
