@@ -289,11 +289,11 @@ struct cpg_param resolution_4_lanes_param[TABLE_MAX] = {
 	{ 65000, 2,  65,        0, 1, 1, 0, 0x16, 1, 2}, /* XGA 65.00MHz */
 	{ 71000, 2,  71,        0, 1, 1, 0, 0x16, 1, 2}, /* WXGA 1280x800 71.0MHz */
 	{ 74176, 2,  74,  2952790, 1, 1, 0, 0x16, 1, 2}, /* 720p 74.176MHz */
-	{ 74250, 2,  74,  4194304, 1, 1, 0, 0x16, 1, 2}, /* 720p 74.25MHz */
+	{ 74250, 2,  75,  4194304, 1, 1, 0, 0x16, 1, 2}, /* 720p 74.25MHz */
 	{ 85500, 2,  85,  8388608, 1, 1, 0, 0x16, 1, 2}, /* FWXGA 1360x768 85.5MHz */
 	{ 88750, 2,  88, 12582912, 1, 1, 0, 0x16, 1, 2}, /* WXGA+ 1440x900 88.75MHz */
 	{108000, 2, 108,        0, 1, 1, 0, 0x16, 1, 2}, /* SXGA 108MHz */
-	{148500, 2, 148,  8388608, 1, 1, 0, 0x16, 1, 2}, /* 1080p 148.5MHz */
+	{148500, 2, 158,  5242880, 1, 1, 0, 0x16, 1, 2}, /* 1080p 148.5MHz */
 };
 
 struct cpg_param resolution_param_parallel[TABLE_PARALLEL_MAX] = {
@@ -327,6 +327,7 @@ static void rcar_du_crtc_set_display_timing(struct rcar_du_crtc *rcrtc)
 		u32 tableMax;
 		struct cpg_param *paramPtr;
 		u32 val, nowLcdcClkOn;
+		unsigned long clk_pll5;
 
 		if (of_machine_is_compatible("renesas,r9a07g043")) {
 			parallelOut = 1;
@@ -344,14 +345,17 @@ static void rcar_du_crtc_set_display_timing(struct rcar_du_crtc *rcrtc)
 			case 2:
 				paramPtr = resolution_2_lanes_param;
 				tableMax = TABLE_MAX - 1;
+				clk_pll5 = 0x10000; //SEL_PLL5_1 clock
 				break;
 			case 3:
 				paramPtr = resolution_3_lanes_param;
 				tableMax = TABLE_MAX;
+				clk_pll5 = 0x10001; //SEL_PLL5_3 clock
 				break;
 			case 4:
 				paramPtr = resolution_4_lanes_param;
 				tableMax = TABLE_MAX;
+				clk_pll5 = 0x10001; //SEL_PLL5_3 clock
 				break;
 			default:
 				return;
@@ -428,7 +432,7 @@ static void rcar_du_crtc_set_display_timing(struct rcar_du_crtc *rcrtc)
 				val = reg_read(cpg_base + CPG_CPG_CLKSTATUS);
 			} while ((val & DIVDSILPCLK_STS) != 0);
 			/* SEL_PLL5_3 clock */
-			reg_write(cpg_base + CPG_OTHERFUNC1_REG, 0x10001);
+			reg_write(cpg_base + CPG_OTHERFUNC1_REG, clk_pll5);
 			/* DIV_DSI_A, DIV_DSI_B */
 			reg_write(cpg_base + CPG_PL5_SDIV, 0x01010000 |
 				 (paramPtr[index].dsi_div_a << 0) |
