@@ -16,7 +16,6 @@
 /plugin/;
 
 &du {
-	dsi-lanes = <2>;
 	status = "okay";
 };
 

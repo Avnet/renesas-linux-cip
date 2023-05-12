@@ -254,9 +254,9 @@ struct cpg_param resolution_2_lanes_param[TABLE_MAX - 1] = {
 	{ 29605, 2,  59,  3523215, 1, 1, 0, 0x16, 1, 5}, /* WVGA 29.605MHz */
 	{ 40000, 2,  80,        0, 1, 1, 0, 0x16, 1, 5}, /* SVGA 40.00MHz */
 	{ 65000, 2, 130,        0, 1, 1, 0, 0x16, 1, 5}, /* XGA 65.00MHz */
-	{ 71000, 2, 142,        0, 1, 1, 0, 0x16, 1, 5}, /* WXGA 1280x800 71.0MHz */
+	{ 68000, 1, 68,        0, 1, 1, 0, 0x16, 2, 5}, /* 720p 68.00MHz */
 	{ 74176, 2, 148,  5905580, 1, 1, 0, 0x16, 1, 5}, /* 720p 74.176MHz */
-	{ 74250, 2, 148,  8388608, 1, 1, 0, 0x16, 1, 5}, /* 720p 74.25MHz */
+	{ 74250, 1, 76,  4194304, 1, 1, 0, 0x16, 3, 2}, /* 720p 74.25MHz */
 	{ 85500, 2, 171,        0, 1, 1, 0, 0x16, 1, 5}, /* FWXGA 1360x768 85.5MHz */
 	{ 88750, 2, 177,  8388608, 1, 1, 0, 0x16, 1, 5}, /* WXGA+ 1440x900 88.75MHz */
 	{108000, 2, 216,        0, 1, 1, 0, 0x16, 1, 5}, /* SXGA 108MHz */
@@ -381,6 +381,10 @@ static void rcar_du_crtc_set_display_timing(struct rcar_du_crtc *rcrtc)
 
 		if (i == tableMax)
 			index = tableMax - 1;
+
+		dev_dbg(rcdu->dev, "drm_display_mode: clock=%d  resolution= %d * %d", mode->clock, mode->hdisplay,  mode->vdisplay);
+		dev_dbg(rcdu->dev, "match paramPtr[%d], freq=%d  pl5_param= %d %d %d", index, paramPtr[index].frequency,  \
+		                            paramPtr[index].pl5_refdiv, paramPtr[index].pl5_intin, paramPtr[index].pl5_fracin);
 
 		if ((parallelOut == 0) && (paramPtr[i].frequency > 74250))
 			reg_write(cpg_base + CPG_SIPPL3_CLK5, 0x02);
