@@ -186,6 +186,9 @@ static int rzg2l_mipi_dsi_startup(struct rzg2l_mipi_dsi *mipi_dsi)
 		timings.ths_zero = 23;
 	}
 
+	if (IS_ENABLED(CONFIG_DRM_I2C_ADV7511))
+		timings.ths_zero = 25;
+
 	dphytim0 = DSIDPHYTIM0_TCLK_MISS(timings.tclk_miss) |
 		   DSIDPHYTIM0_T_INIT(timings.t_init);
 	dphytim1 = DSIDPHYTIM1_THS_PREPARE(timings.ths_prepare) |

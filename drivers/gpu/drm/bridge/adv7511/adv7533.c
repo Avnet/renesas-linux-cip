@@ -106,19 +106,21 @@ enum drm_mode_status adv7533_mode_valid(struct adv7511 *adv,
 	int lanes;
 	struct mipi_dsi_device *dsi = adv->dsi;
 
-	if (mode->clock > 80000)
-		lanes = 4;
-	else
-		lanes = 3;
+	if (adv->type != ADV7535) {
+		if (mode->clock > 80000)
+			lanes = 4;
+		else
+			lanes = 3;
 
-	/*
-	 * TODO: add support for dynamic switching of lanes
-	 * by using the bridge pre_enable() op . Till then filter
-	 * out the modes which shall need different number of lanes
-	 * than what was configured in the device tree.
-	 */
-	if (lanes != dsi->lanes)
-		return MODE_BAD;
+		/*
+		 * TODO: add support for dynamic switching of lanes
+		 * by using the bridge pre_enable() op . Till then filter
+		 * out the modes which shall need different number of lanes
+		 * than what was configured in the device tree.
+		 */
+		if (lanes != dsi->lanes)
+			return MODE_BAD;
+	}
 
 	return MODE_OK;
 }
