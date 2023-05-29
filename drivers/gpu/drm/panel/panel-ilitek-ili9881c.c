@@ -52,6 +52,7 @@ struct ili9881c_panel {
 	struct mipi_dsi_device	*dsi;
 	const struct panel_desc *desc;
 
+	struct gpio_desc	*power_gpio;
 	struct gpio_desc	*enable_gpio;
 	struct gpio_desc	*reset_gpio;
 };
@@ -743,6 +744,18 @@ static int ili9881c_dsi_probe(struct mipi_dsi_device *dsi)
 	ctx->dsi = dsi;
 	mipi_dsi_set_drvdata(dsi, ctx);
 
+    /* The power GPIO is MIPI VDD5V pin on the LCD adapter baord. */
+    ctx->power_gpio = devm_gpiod_get(&dsi->dev, "power", GPIOD_OUT_LOW);
+    if (IS_ERR(ctx->power_gpio)) {
+		dev_err(&dsi->dev, "failed to get mipi power gpio");
+		return PTR_ERR(ctx->power_gpio);
+    } else {
+		gpiod_set_value_cansleep(ctx->power_gpio, 0);
+		msleep(50);
+		gpiod_set_value_cansleep(ctx->power_gpio, 1);
+		msleep(400);
+    }
+
     /* The enable GPIO is optional, this pin is MIPI DSI/HDMI switch select input. */
     ctx->enable_gpio = devm_gpiod_get_optional(&dsi->dev, "switch", GPIOD_OUT_HIGH);
     if (IS_ERR_OR_NULL(ctx->enable_gpio)) {
@@ -798,6 +811,9 @@ static void ili9881c_dsi_shutdown(struct mipi_dsi_device *dsi)
 
 	ili9881c_disable(&ctx->panel);
 	ili9881c_unprepare(&ctx->panel);
+	if (ctx->power_gpio) {
+		gpiod_set_value_cansleep(ctx->power_gpio, 0);
+	}
 }
 
 
