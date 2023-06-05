@@ -81,6 +81,3 @@ obj-$(CONFIG_VIDEO_QCOM_CAMSS)		+= qcom/camss/
 obj-$(CONFIG_VIDEO_QCOM_VENUS)		+= qcom/venus/
 
 obj-y					+= sunxi/
-
-obj-y					+= simple_isp/
-obj-y					+= isp_ctrl/
