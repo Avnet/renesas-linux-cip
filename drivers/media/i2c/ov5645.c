@@ -61,6 +61,31 @@
 #define OV5645_SDE_SAT_U		0x5583
 #define OV5645_SDE_SAT_V		0x5584
 
+enum ov5645_frame_rate {
+	OV5645_15_FPS = 0,
+	OV5645_30_FPS,
+	OV5645_45_FPS,
+	OV5645_60_FPS,
+	OV5645_NUM_FRAMERATES,
+};
+
+static const int ov5645_framerates[] = {
+	[OV5645_15_FPS] = 15,
+	[OV5645_30_FPS] = 30,
+	[OV5645_45_FPS] = 45,
+	[OV5645_60_FPS] = 60,
+};
+
+struct ov5645_pixfmt {
+	u32 code;
+	u32 colorspace;
+};
+
+static const struct ov5645_pixfmt ov5645_formats[] = {
+	{ MEDIA_BUS_FMT_UYVY8_2X8, V4L2_COLORSPACE_SRGB, },
+};
+
+
 /* regulator supplies */
 static const char * const ov5645_supply_name[] = {
 	"vdddo", /* Digital I/O (1.8V) supply */
@@ -82,6 +107,7 @@ struct ov5645_mode_info {
 	u32 data_size;
 	u32 pixel_clock;
 	u32 link_freq;
+	u32 max_fps;
 };
 
 struct ov5645 {
@@ -97,6 +123,8 @@ struct ov5645 {
 	struct regulator_bulk_data supplies[OV5645_NUM_SUPPLIES];
 
 	const struct ov5645_mode_info *current_mode;
+	enum ov5645_frame_rate current_fr;
+	struct v4l2_fract frame_interval;
 
 	struct v4l2_ctrl_handler ctrls;
 	struct v4l2_ctrl *pixel_clock;
@@ -112,6 +140,8 @@ struct ov5645 {
 
 	struct gpio_desc *enable_gpio;
 	struct gpio_desc *rst_gpio;
+
+	bool streaming;
 };
 
 static inline struct ov5645 *to_ov5645(struct v4l2_subdev *sd)
@@ -361,6 +391,198 @@ static const struct reg_value ov5645_global_init_setting[] = {
 	{ OV5645_PAD_OUTPUT00, 0x70 }
 };
 
+static const struct reg_value ov5645_setting_VGA_640_480[] = {
+	{ 0x3612, 0xa9 },
+	{ 0x3614, 0x50 },
+	{ 0x3618, 0x00 },
+	{ 0x3034, 0x18 },
+	{ 0x3035, 0x21 },
+	{ 0x3036, 0x70 },
+	{ 0x3600, 0x09 },
+	{ 0x3601, 0x43 },
+	{ 0x3708, 0x66 },
+	{ 0x370c, 0xc3 },
+	{ 0x3800, 0x02 },
+	{ 0x3801, 0x80 },
+	{ 0x3802, 0x01 },
+	{ 0x3803, 0xd4 },
+	{ 0x3804, 0x0a },
+	{ 0x3805, 0x3f },
+	{ 0x3806, 0x07 },
+	{ 0x3807, 0xeb },
+	{ 0x3808, 0x02 },
+	{ 0x3809, 0x80 },
+	{ 0x380a, 0x01 },
+	{ 0x380b, 0xe0 },
+	{ 0x380c, 0x07 },
+	{ 0x380d, 0x68 },
+	{ 0x380e, 0x03 },
+	{ 0x380f, 0xd8 },
+	{ 0x3813, 0x06 },
+	{ 0x3814, 0x31 },
+	{ 0x3815, 0x31 },
+	{ 0x3820, 0x41 },
+	{ 0x3a02, 0x03 },
+	{ 0x3a03, 0xd8 },
+	{ 0x3a08, 0x01 },
+	{ 0x3a09, 0xf8 },
+	{ 0x3a0a, 0x01 },
+	{ 0x3a0b, 0xa4 },
+	{ 0x3a0e, 0x02 },
+	{ 0x3a0d, 0x02 },
+	{ 0x3a14, 0x03 },
+	{ 0x3a15, 0xd8 },
+	{ 0x3a18, 0x00 },
+	{ 0x4004, 0x02 },
+	{ 0x4005, 0x18 },
+	{ 0x4300, 0x32 },
+	{ 0x4202, 0x00 }
+};
+
+static const struct reg_value ov5645_setting_30fps_NTSC_720_480[] = {
+	{ 0x3612, 0xa9 },
+	{ 0x3614, 0x50 },
+	{ 0x3618, 0x00 },
+	{ 0x3034, 0x18 },
+	{ 0x3035, 0x11 },
+	{ 0x3036, 0x54 },
+	{ 0x3600, 0x09 },
+	{ 0x3601, 0x43 },
+	{ 0x3708, 0x66 },
+	{ 0x370c, 0xc3 },
+	{ 0x3800, 0x00 },
+	{ 0x3801, 0x00 },
+	{ 0x3802, 0x00 },
+	{ 0x3803, 0x6c },
+	{ 0x3804, 0x0a },
+	{ 0x3805, 0x3f },
+	{ 0x3806, 0x07 },
+	{ 0x3807, 0x33 },
+	{ 0x3808, 0x02 },
+	{ 0x3809, 0xd0 },
+	{ 0x380a, 0x01 },
+	{ 0x380b, 0xe0 },
+	{ 0x380c, 0x07 },
+	{ 0x380d, 0x68 },
+	{ 0x380e, 0x03 },
+	{ 0x380f, 0xd8 },
+	{ 0x3813, 0x06 },
+	{ 0x3814, 0x31 },
+	{ 0x3815, 0x31 },
+	{ 0x3820, 0x41 },
+	{ 0x3a02, 0x03 },
+	{ 0x3a03, 0xd8 },
+	{ 0x3a08, 0x01 },
+	{ 0x3a09, 0xf8 },
+	{ 0x3a0a, 0x01 },
+	{ 0x3a0b, 0xa4 },
+	{ 0x3a0e, 0x02 },
+	{ 0x3a0d, 0x02 },
+	{ 0x3a14, 0x03 },
+	{ 0x3a15, 0xd8 },
+	{ 0x3a18, 0x00 },
+	{ 0x4004, 0x02 },
+	{ 0x4005, 0x18 },
+	{ 0x4300, 0x32 },
+	{ 0x4202, 0x00 }
+};
+
+static const struct reg_value ov5645_setting_720P_1280_720[] = {
+	{ 0x3612, 0xa9 },
+	{ 0x3614, 0x50 },
+	{ 0x3618, 0x00 },
+	{ 0x3034, 0x18 },
+	{ 0x3035, 0x11 },
+	{ 0x3036, 0x54 },
+	{ 0x3500, 0x00},
+	{ 0x3501, 0x01},
+	{ 0x3502, 0x00},
+	{ 0x350a, 0x00},
+	{ 0x350b, 0x3f},
+	{ 0x3600, 0x0a},
+	{ 0x3601, 0x75},
+	{ 0x3620, 0x33},
+	{ 0x3621, 0xe0},
+	{ 0x3622, 0x01},
+	{ 0x3630, 0x2d},
+	{ 0x3631, 0x00},
+	{ 0x3632, 0x32},
+	{ 0x3633, 0x52},
+	{ 0x3634, 0x70},
+	{ 0x3635, 0x13},
+	{ 0x3636, 0x03},
+	{ 0x3702, 0x6e},
+	{ 0x3703, 0x52},
+	{ 0x3704, 0xa0},
+	{ 0x3705, 0x33},
+	{ 0x3708, 0x66},
+	{ 0x3709, 0x12},
+	{ 0x370b, 0x61},
+	{ 0x370c, 0xc3},
+	{ 0x370f, 0x10},
+	{ 0x3715, 0x08},
+	{ 0x3717, 0x01},
+	{ 0x371b, 0x20},
+	{ 0x3731, 0x22},
+	{ 0x3739, 0x70},
+	{ 0x3901, 0x0a},
+	{ 0x3905, 0x02},
+	{ 0x3906, 0x10},
+	{ 0x3719, 0x86},
+	{ 0x3800, 0x00},
+	{ 0x3801, 0x00},
+	{ 0x3802, 0x00},
+	{ 0x3803, 0xfa},
+	{ 0x3804, 0x0a},
+	{ 0x3805, 0x3f},
+	{ 0x3806, 0x06},
+	{ 0x3807, 0xa9},
+	{ 0x3808, 0x05},
+	{ 0x3809, 0x00},
+	{ 0x380a, 0x02},
+	{ 0x380b, 0xd0},
+	{ 0x380c, 0x07},
+	{ 0x380d, 0x64},
+	{ 0x380e, 0x02},
+	{ 0x380f, 0xe4},
+	{ 0x3810, 0x00},
+	{ 0x3811, 0x10},
+	{ 0x3812, 0x00},
+	{ 0x3813, 0x04},
+	{ 0x3814, 0x31},
+	{ 0x3815, 0x31},
+	{ 0x3820, 0x41},
+	{ 0x3821, 0x07},
+	{ 0x3824, 0x01},
+	{ 0x3826, 0x03},
+	{ 0x3828, 0x08},
+	{ 0x3a02, 0x02},
+	{ 0x3a03, 0xe4},
+	{ 0x3a08, 0x01},
+	{ 0x3a09, 0xbc},
+	{ 0x3a0a, 0x01},
+	{ 0x3a0b, 0x72},
+	{ 0x3a0e, 0x01},
+	{ 0x3a0d, 0x02},
+	{ 0x3a14, 0x02},
+	{ 0x3a15, 0xe4},
+	{ 0x3a18, 0x00},
+	{ 0x3a19, 0xf8},
+	{ 0x3c01, 0x34},
+	{ 0x3c04, 0x28},
+	{ 0x3c05, 0x98},
+	{ 0x3c07, 0x07},
+	{ 0x3c09, 0xc2},
+	{ 0x3c0a, 0x9c},
+	{ 0x3c0b, 0x40},
+	{ 0x3c01, 0x34},
+	{ 0x4004, 0x02 },
+	{ 0x4005, 0x18 },
+	{ 0x4300, 0x32 },
+	{ 0x4202, 0x00 }
+
+};
+
 static const struct reg_value ov5645_setting_sxga[] = {
 	{ 0x3612, 0xa9 },
 	{ 0x3614, 0x50 },
@@ -516,12 +738,40 @@ static const s64 link_freq[] = {
 
 static const struct ov5645_mode_info ov5645_mode_info_data[] = {
 	{
+		.width = 640,
+		.height = 480,
+		.data = ov5645_setting_VGA_640_480,
+		.data_size = ARRAY_SIZE(ov5645_setting_VGA_640_480),
+		.pixel_clock = 112000000,
+		.link_freq = 0, /* an index in link_freq[] */
+		.max_fps = OV5645_30_FPS
+	},
+	{
+		.width = 720,
+		.height = 480,
+		.data = ov5645_setting_30fps_NTSC_720_480,
+		.data_size = ARRAY_SIZE(ov5645_setting_30fps_NTSC_720_480),
+		.pixel_clock = 112000000,
+		.link_freq = 0, /* an index in link_freq[] */
+		.max_fps = OV5645_45_FPS
+	},
+	{
+		.width = 1280,
+		.height = 720,
+		.data = ov5645_setting_720P_1280_720,
+		.data_size = ARRAY_SIZE(ov5645_setting_720P_1280_720),
+		.pixel_clock = 112000000,
+		.link_freq = 0, /* an index in link_freq[] */
+		.max_fps = OV5645_60_FPS
+	},
+	{
 		.width = 1280,
 		.height = 960,
 		.data = ov5645_setting_sxga,
 		.data_size = ARRAY_SIZE(ov5645_setting_sxga),
 		.pixel_clock = 112000000,
-		.link_freq = 0 /* an index in link_freq[] */
+		.link_freq = 0, /* an index in link_freq[] */
+		.max_fps = OV5645_30_FPS
 	},
 	{
 		.width = 1920,
@@ -529,7 +779,8 @@ static const struct ov5645_mode_info ov5645_mode_info_data[] = {
 		.data = ov5645_setting_1080p,
 		.data_size = ARRAY_SIZE(ov5645_setting_1080p),
 		.pixel_clock = 168000000,
-		.link_freq = 1 /* an index in link_freq[] */
+		.link_freq = 1, /* an index in link_freq[] */
+		.max_fps = OV5645_30_FPS
 	},
 	{
 		.width = 2592,
@@ -537,7 +788,8 @@ static const struct ov5645_mode_info ov5645_mode_info_data[] = {
 		.data = ov5645_setting_full,
 		.data_size = ARRAY_SIZE(ov5645_setting_full),
 		.pixel_clock = 168000000,
-		.link_freq = 1 /* an index in link_freq[] */
+		.link_freq = 1, /* an index in link_freq[] */
+		.max_fps = OV5645_15_FPS
 	},
 };
 
@@ -583,6 +835,27 @@ static int ov5645_read_reg(struct ov5645 *ov5645, u16 reg, u8 *val)
 	}
 
 	return 0;
+}
+
+static const struct ov5645_mode_info *
+ov5645_find_mode(struct ov5645 *sensor, enum ov5645_frame_rate fr,
+		 int width, int height, bool nearest)
+{
+	const struct ov5645_mode_info *mode;
+
+	mode = v4l2_find_nearest_size(ov5645_mode_info_data,
+			       ARRAY_SIZE(ov5645_mode_info_data),
+			       width, height,
+			       width, height);
+	if (!mode ||
+	    (!nearest && (mode->width != width || mode->height != height)))
+		return NULL;
+
+	/* Check to see if the current mode exceeds the max frame rate */
+	if (ov5645_framerates[fr] > ov5645_framerates[mode->max_fps])
+		return NULL;
+
+	return mode;
 }
 
 static int ov5645_set_aec_mode(struct ov5645 *ov5645, u32 mode)
@@ -710,6 +983,49 @@ exit:
 	mutex_unlock(&ov5645->power_lock);
 
 	return ret;
+}
+
+static int ov5645_try_frame_interval(struct ov5645 *sensor,
+				     struct v4l2_fract *fi,
+				     u32 width, u32 height)
+{
+	const struct ov5645_mode_info *mode;
+	enum ov5645_frame_rate rate = OV5645_15_FPS;
+	int minfps, maxfps, best_fps, fps;
+	int i;
+
+	minfps = ov5645_framerates[OV5645_15_FPS];
+	maxfps = ov5645_framerates[OV5645_60_FPS];
+
+	if (fi->numerator == 0) {
+		fi->denominator = maxfps;
+		fi->numerator = 1;
+		rate = OV5645_60_FPS;
+		goto find_mode;
+	}
+
+	fps = clamp_val(DIV_ROUND_CLOSEST(fi->denominator, fi->numerator),
+			minfps, maxfps);
+
+	best_fps = minfps;
+	fps = clamp_val(DIV_ROUND_CLOSEST(fi->denominator, fi->numerator),
+			minfps, maxfps);
+
+	for (i = 0; i < ARRAY_SIZE(ov5645_framerates); i++) {
+		int curr_fps = ov5645_framerates[i];
+
+		if (abs(curr_fps - fps) < abs(best_fps - fps)) {
+			best_fps = curr_fps;
+			rate = i;
+		}
+	}
+
+	fi->numerator = 1;
+	fi->denominator = best_fps;
+
+find_mode:
+	mode = ov5645_find_mode(sensor, rate, width, height, false);
+	return mode ? rate : -EINVAL;
 }
 
 static int ov5645_set_saturation(struct ov5645 *ov5645, s32 value)
@@ -866,6 +1182,86 @@ static int ov5645_enum_frame_size(struct v4l2_subdev *subdev,
 	return 0;
 }
 
+static int ov5645_enum_frame_interval(
+	struct v4l2_subdev *sd,
+	struct v4l2_subdev_pad_config *cfg,
+	struct v4l2_subdev_frame_interval_enum *fie)
+{
+	struct ov5645 *sensor = to_ov5645(sd);
+	struct v4l2_fract tpf;
+	int ret;
+
+	if (fie->pad != 0)
+		return -EINVAL;
+	if (fie->index >= OV5645_NUM_FRAMERATES)
+		return -EINVAL;
+
+	tpf.numerator = 1;
+	tpf.denominator = ov5645_framerates[fie->index];
+
+	ret = ov5645_try_frame_interval(sensor, &tpf,
+					fie->width, fie->height);
+	if (ret < 0)
+		return -EINVAL;
+
+	fie->interval = tpf;
+	return 0;
+}
+
+static int ov5645_g_frame_interval(struct v4l2_subdev *sd,
+				   struct v4l2_subdev_frame_interval *fi)
+{
+	struct ov5645 *sensor = to_ov5645(sd);
+
+	mutex_lock(&sensor->power_lock);
+	fi->interval = sensor->frame_interval;
+	mutex_unlock(&sensor->power_lock);
+
+	return 0;
+}
+
+static int ov5645_s_frame_interval(struct v4l2_subdev *sd,
+				   struct v4l2_subdev_frame_interval *fi)
+{
+	struct ov5645 *sensor = to_ov5645(sd);
+	const struct ov5645_mode_info *mode;
+	int frame_rate, ret = 0;
+
+	if (fi->pad != 0)
+		return -EINVAL;
+
+	mutex_lock(&sensor->power_lock);
+
+	if (sensor->streaming) {
+		ret = -EBUSY;
+		goto out;
+	}
+
+	mode = sensor->current_mode;
+
+	frame_rate = ov5645_try_frame_interval(sensor, &fi->interval,
+					       mode->width, mode->height);
+	if (frame_rate < 0)
+		frame_rate = OV5645_15_FPS;
+
+	mode = ov5645_find_mode(sensor, frame_rate, mode->width,
+				mode->height, true);
+	if (!mode) {
+		ret = -EINVAL;
+		goto out;
+	}
+
+	if (mode != sensor->current_mode ||
+	    frame_rate != sensor->current_fr) {
+		sensor->current_fr = frame_rate;
+		sensor->frame_interval = fi->interval;
+		sensor->current_mode = mode;
+	}
+out:
+	mutex_unlock(&sensor->power_lock);
+	return ret;
+}
+
 static struct v4l2_mbus_framefmt *
 __ov5645_get_pad_format(struct ov5645 *ov5645,
 			struct v4l2_subdev_pad_config *cfg,
@@ -1012,7 +1408,10 @@ static int ov5645_s_stream(struct v4l2_subdev *subdev, int enable)
 				       OV5645_SYSTEM_CTRL0_START);
 		if (ret < 0)
 			return ret;
+
+		ov5645->streaming = enable;
 	} else {
+		ov5645->streaming = false;
 		ret = ov5645_write_reg(ov5645, OV5645_IO_MIPI_CTRL00, 0x40);
 		if (ret < 0)
 			return ret;
@@ -1031,6 +1430,8 @@ static const struct v4l2_subdev_core_ops ov5645_core_ops = {
 };
 
 static const struct v4l2_subdev_video_ops ov5645_video_ops = {
+	.g_frame_interval = ov5645_g_frame_interval,
+	.s_frame_interval = ov5645_s_frame_interval,
 	.s_stream = ov5645_s_stream,
 };
 
@@ -1041,6 +1442,7 @@ static const struct v4l2_subdev_pad_ops ov5645_subdev_pad_ops = {
 	.get_fmt = ov5645_get_format,
 	.set_fmt = ov5645_set_format,
 	.get_selection = ov5645_get_selection,
+	.enum_frame_interval = ov5645_enum_frame_interval,
 };
 
 static const struct v4l2_subdev_ops ov5645_subdev_ops = {
