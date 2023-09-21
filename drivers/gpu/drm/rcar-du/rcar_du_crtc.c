@@ -257,6 +257,7 @@ static void rcar_du_crtc_set_display_timing(struct rcar_du_crtc *rcrtc)
 		unsigned long long pll5_clk;
 		unsigned long long divide_val;
 		u32 dsi_div;
+		int tweak_val = 1;
 
 		/* Common settings */
 		param.frequency = 0;
@@ -341,7 +342,10 @@ static void rcar_du_crtc_set_display_timing(struct rcar_du_crtc *rcrtc)
 			/* Divide raw bit clock by source clock. */
 			/* Numerator portion (integer) */
 			divide_val = pll5_clk * param.pl5_refdiv * param.pl5_postdiv1 * param.pl5_postdiv2;
-			param.pl5_intin = divide_val / OSCLK_HZ;
+			if (pix_clk > 140000000) {
+				tweak_val = 3;
+			}
+			param.pl5_intin = divide_val / OSCLK_HZ + tweak_val;
 
 			/* Denominator portion (multiplied by 16k to become an integer) */
 			/* Remove integer portion */
@@ -378,6 +382,11 @@ static void rcar_du_crtc_set_display_timing(struct rcar_du_crtc *rcrtc)
 				return;
 			}
 		}
+		dev_dbg(rcrtc->dev->dev, "cpg_param: %d %d-%d-%d %d-%d %d-%x %d-%d-%d\n",  \
+					param.frequency, param.pl5_refdiv, param.pl5_intin, \
+					param.pl5_fracin, param.pl5_postdiv1, param.pl5_postdiv2, \
+					param.pl5_divval, param.pl5_spread, param.dsi_div_a, \
+					param.dsi_div_b, param.sel_pll5_4);
 
 		/* CPG_PLL5_STBY: RESETB=0 */
 		reg_write(cpg_base + 0x0140, 0x00150000);

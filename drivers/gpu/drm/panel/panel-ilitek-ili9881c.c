@@ -52,6 +52,7 @@ struct ili9881c_panel {
 	struct mipi_dsi_device	*dsi;
 	const struct panel_desc *desc;
 
+	struct gpio_desc	*power_gpio;
 	struct gpio_desc	*enable_gpio;
 	struct gpio_desc	*reset_gpio;
 };
@@ -403,6 +404,7 @@ static const struct ili9881c_instr ili9881c_init_ph720128t005[] = {
 	ILI9881C_COMMAND_INSTR(0x88, 0x02),
 	ILI9881C_COMMAND_INSTR(0x89, 0x02),
 	ILI9881C_COMMAND_INSTR(0x8A, 0x02),
+	ILI9881C_COMMAND_INSTR(0x043, 0x00),
 	ILI9881C_SWITCH_PAGE_INSTR(4),
 	ILI9881C_COMMAND_INSTR(0x6C, 0x15),
 	ILI9881C_COMMAND_INSTR(0x6E, 0x2A),
@@ -416,8 +418,13 @@ static const struct ili9881c_instr ili9881c_init_ph720128t005[] = {
 	ILI9881C_COMMAND_INSTR(0xB5, 0x06),
 	ILI9881C_COMMAND_INSTR(0x38, 0x01),
 	ILI9881C_COMMAND_INSTR(0x39, 0x00),
+	ILI9881C_COMMAND_INSTR(0x088, 0x0B),
 	ILI9881C_SWITCH_PAGE_INSTR(1),
-	ILI9881C_COMMAND_INSTR(0x22, 0x0A),/*DISPALY_ROTATE_180 (0x22, 0x09)*/
+	#ifdef AVT_DISPALY_ROTATE_180
+	ILI9881C_COMMAND_INSTR(0x22, 0x09),
+	#else
+	ILI9881C_COMMAND_INSTR(0x22, 0x0A),
+	#endif
 	ILI9881C_COMMAND_INSTR(0x31, 0x00),
 	ILI9881C_COMMAND_INSTR(0x53, 0x7D),
 	ILI9881C_COMMAND_INSTR(0x55, 0x8F),
@@ -465,6 +472,9 @@ static const struct ili9881c_instr ili9881c_init_ph720128t005[] = {
 	ILI9881C_COMMAND_INSTR(0xD1, 0x50),
 	ILI9881C_COMMAND_INSTR(0xD2, 0x64),
 	ILI9881C_COMMAND_INSTR(0xD3, 0x39),
+	ILI9881C_SWITCH_PAGE_INSTR(0),
+	ILI9881C_COMMAND_INSTR(0x35, 0x00),
+	ILI9881C_COMMAND_INSTR(0x11, 0x00),
 #ifdef CONFIG_SELFTEST_MODE
 /* BIST mode (Built-in Self-test Pattern)*/
 	ILI9881C_SWITCH_PAGE_INSTR(4),
@@ -479,157 +489,157 @@ static inline struct ili9881c_panel *panel_to_ili9881c(struct drm_panel *panel)
 	return container_of(panel, struct ili9881c_panel, panel);
 }
 
-static int ili9881c_switch_page(struct ili9881c_panel *tftcp, u8 page)
+static int ili9881c_switch_page(struct ili9881c_panel *ctx, u8 page)
 {
 	u8 buf[4] = { 0xff, 0x98, 0x81, page };
 	int ret;
 
-	ret = mipi_dsi_dcs_write_buffer(tftcp->dsi, buf, sizeof(buf));
+	ret = mipi_dsi_dcs_write_buffer(ctx->dsi, buf, sizeof(buf));
 	if (ret < 0) {
-		dev_err(&tftcp->dsi->dev, "Failed to switch_page[%d] (%d)\n", page, ret);
+		dev_err(&ctx->dsi->dev, "Failed to switch_page[%d] (%d)\n", page, ret);
 		return ret;
 	}
 
 	return 0;
 }
 
-static int ili9881c_send_cmd_data(struct ili9881c_panel *tftcp, u8 cmd, u8 data)
+static int ili9881c_send_cmd_data(struct ili9881c_panel *ctx, u8 cmd, u8 data)
 {
 	u8 buf[2] = { cmd, data };
 	int ret;
 
-	ret = mipi_dsi_dcs_write_buffer(tftcp->dsi, buf, sizeof(buf));
+	ret = mipi_dsi_dcs_write_buffer(ctx->dsi, buf, sizeof(buf));
 	if (ret < 0) {
-		dev_err(&tftcp->dsi->dev, "Failed to send_cmd_data[%02x,%02X] (%d)\n", cmd, data, ret);
+		dev_err(&ctx->dsi->dev, "Failed to send_cmd_data[%02x,%02X] (%d)\n", cmd, data, ret);
 		return ret;
 	}
 
 	return 0;
 }
 
-static int ili9881c_read_cmd_data(struct ili9881c_panel *tftcp, u8 cmd)
+static int ili9881c_read_cmd_data(struct ili9881c_panel *ctx, u8 cmd)
 {
 	u8 buf = 0;
 	int ret;
 
-	ret = mipi_dsi_dcs_read(tftcp->dsi, cmd, &buf, sizeof(buf));
+	ret = mipi_dsi_dcs_read(ctx->dsi, cmd, &buf, sizeof(buf));
 	if (ret < 0) {
-		dev_err(&tftcp->dsi->dev, "Failed to get ID (%d)\n", ret);
+		dev_err(&ctx->dsi->dev, "Failed to get ID (%d)\n", ret);
 		return ret;
 	}
 
 	return buf;
 }
 
-static void ili9881c_getID(struct ili9881c_panel *tftcp)
+static void ili9881c_getID(struct ili9881c_panel *ctx)
 {
 	u8 id[3];
 
-	tftcp->dsi->mode_flags |= MIPI_DSI_MODE_LPM;
-	ili9881c_switch_page(tftcp, 1);
-	id[0] = ili9881c_read_cmd_data(tftcp, 0x00);
-	id[1] = ili9881c_read_cmd_data(tftcp, 0x01);
-	id[2] = ili9881c_read_cmd_data(tftcp, 0x02);
+	ctx->dsi->mode_flags |= MIPI_DSI_MODE_LPM;
+	ili9881c_switch_page(ctx, 1);
+	id[0] = ili9881c_read_cmd_data(ctx, 0x00);
+	id[1] = ili9881c_read_cmd_data(ctx, 0x01);
+	id[2] = ili9881c_read_cmd_data(ctx, 0x02);
 
-	dev_info(&tftcp->dsi->dev, "ID: 0x%02X 0x%02X 0x%02X \n", id[0], id[1], id[2]);
+	dev_info(&ctx->dsi->dev, "ID: 0x%02X 0x%02X 0x%02X \n", id[0], id[1], id[2]);
 }
 
-static void ili9881c_reset(struct ili9881c_panel *tftcp)
+static void ili9881c_reset(struct ili9881c_panel *ctx)
 {
 	/* Reset 5ms */
-	if (tftcp->reset_gpio) {
-		dev_dbg(&tftcp->dsi->dev,"reset the chip\n");
-		gpiod_set_value_cansleep(tftcp->reset_gpio, 0);
+	if (ctx->reset_gpio) {
+		dev_dbg(&ctx->dsi->dev,"reset the chip\n");
+		gpiod_set_value_cansleep(ctx->reset_gpio, 0);
 		usleep_range(5000, 10000);
-		gpiod_set_value_cansleep(tftcp->reset_gpio, 1);
+		gpiod_set_value_cansleep(ctx->reset_gpio, 1);
 		usleep_range(20000, 25000);
 	}
 }
 
 static int ili9881c_prepare(struct drm_panel *panel)
 {
-	struct ili9881c_panel *tftcp = panel_to_ili9881c(panel);
+	struct ili9881c_panel *ctx = panel_to_ili9881c(panel);
 
-	dev_dbg(&tftcp->dsi->dev,"%s\n",__func__);
+	dev_dbg(&ctx->dsi->dev,"%s\n",__func__);
 
 
-	ili9881c_reset(tftcp);
+	ili9881c_reset(ctx);
 
 	return 0;
 }
 
 static int ili9881c_enable(struct drm_panel *panel)
 {
-	struct ili9881c_panel *tftcp = panel_to_ili9881c(panel);
-	const struct ili9881c_instr *cmds = tftcp->desc->init_code;
-	unsigned int len = tftcp->desc->init_code_length;
+	struct ili9881c_panel *ctx = panel_to_ili9881c(panel);
+	const struct ili9881c_instr *cmds = ctx->desc->init_code;
+	unsigned int len = ctx->desc->init_code_length;
 	int ret;
 	unsigned int i;
 
-	tftcp->dsi->mode_flags |= MIPI_DSI_MODE_LPM;
+	ctx->dsi->mode_flags |= MIPI_DSI_MODE_LPM;
 
 	for (i = 0; i < len; i++) {
 		const struct ili9881c_instr *instr = &cmds[i];
 
 		if (instr->op == ILI9881C_SWITCH_PAGE)
-			ret = ili9881c_switch_page(tftcp, instr->arg.page);
+			ret = ili9881c_switch_page(ctx, instr->arg.page);
 		else if (instr->op == ILI9881C_COMMAND)
-			ret = ili9881c_send_cmd_data(tftcp, instr->arg.cmd.cmd,
+			ret = ili9881c_send_cmd_data(ctx, instr->arg.cmd.cmd,
 							instr->arg.cmd.data);
 		if (ret)
 			return ret;
 	}
 
-	ret = ili9881c_switch_page(tftcp, 0);
+	ret = ili9881c_switch_page(ctx, 0);
 	if (ret)
 		return ret;
 
 	/* Set tear ON */
-	ret = mipi_dsi_dcs_set_tear_on(tftcp->dsi, MIPI_DSI_DCS_TEAR_MODE_VBLANK);
+	ret = mipi_dsi_dcs_set_tear_on(ctx->dsi, MIPI_DSI_DCS_TEAR_MODE_VBLANK);
 	if (ret < 0) {
-		dev_err(&tftcp->dsi->dev, "Failed to set tear ON (%d)\n", ret);
+		dev_err(&ctx->dsi->dev, "Failed to set tear ON (%d)\n", ret);
 		return ret;
 	}
 
 	/* Exit sleep mode */
-	ret = mipi_dsi_dcs_exit_sleep_mode(tftcp->dsi);
+	ret = mipi_dsi_dcs_exit_sleep_mode(ctx->dsi);
 	if (ret < 0) {
-		dev_err(&tftcp->dsi->dev, "Failed to exit sleep mode (%d)\n", ret);
+		dev_err(&ctx->dsi->dev, "Failed to exit sleep mode (%d)\n", ret);
 		return ret;
 	}
 
 	usleep_range(120000, 130000);
 
-	ret = mipi_dsi_dcs_set_display_on(tftcp->dsi);
+	ret = mipi_dsi_dcs_set_display_on(ctx->dsi);
 	if (ret < 0) {
-		dev_err(&tftcp->dsi->dev, "Failed to set display ON (%d)\n", ret);
+		dev_err(&ctx->dsi->dev, "Failed to set display ON (%d)\n", ret);
 		return ret;
 	}
 
-	dev_dbg(&tftcp->dsi->dev,"%s\n",__func__);
-	ili9881c_getID(tftcp);
+	dev_dbg(&ctx->dsi->dev,"%s\n",__func__);
+	ili9881c_getID(ctx);
 
 	return 0;
 }
 
 static int ili9881c_disable(struct drm_panel *panel)
 {
-	struct ili9881c_panel *tftcp = panel_to_ili9881c(panel);
+	struct ili9881c_panel *ctx = panel_to_ili9881c(panel);
 	int ret;
 
-	tftcp->dsi->mode_flags |= MIPI_DSI_MODE_LPM;
+	ctx->dsi->mode_flags |= MIPI_DSI_MODE_LPM;
 
-	ret = mipi_dsi_dcs_set_display_off(tftcp->dsi);
+	ret = mipi_dsi_dcs_set_display_off(ctx->dsi);
 	if (ret < 0) {
-		dev_err(&tftcp->dsi->dev, "Failed to set display OFF (%d)\n", ret);
+		dev_err(&ctx->dsi->dev, "Failed to set display OFF (%d)\n", ret);
 		return ret;
 	}
 
 	usleep_range(100000, 110000);
 
-	ret = mipi_dsi_dcs_enter_sleep_mode(tftcp->dsi);
+	ret = mipi_dsi_dcs_enter_sleep_mode(ctx->dsi);
 	if (ret < 0) {
-		dev_err(&tftcp->dsi->dev, "Failed to enter sleep mode (%d)\n", ret);
+		dev_err(&ctx->dsi->dev, "Failed to enter sleep mode (%d)\n", ret);
 		return ret;
 	}
 
@@ -638,25 +648,38 @@ static int ili9881c_disable(struct drm_panel *panel)
 
 static int ili9881c_unprepare(struct drm_panel *panel)
 {
-	struct ili9881c_panel *tftcp = panel_to_ili9881c(panel);
+	struct ili9881c_panel *ctx = panel_to_ili9881c(panel);
 
-	dev_dbg(&tftcp->dsi->dev,"%s\n",__func__);
+	dev_dbg(&ctx->dsi->dev,"%s\n",__func__);
 
-	if (tftcp->reset_gpio) {
-		gpiod_set_value_cansleep(tftcp->reset_gpio, 1);
+	if (ctx->reset_gpio) {
+		gpiod_set_value_cansleep(ctx->reset_gpio, 1);
 		usleep_range(5000, 10000);
-		gpiod_set_value_cansleep(tftcp->reset_gpio, 0);
+		gpiod_set_value_cansleep(ctx->reset_gpio, 0);
 	}
-	if (tftcp->enable_gpio != NULL)
+	if (ctx->enable_gpio != NULL)
 	{
-		gpiod_set_value_cansleep(tftcp->enable_gpio, 0);
+		gpiod_set_value_cansleep(ctx->enable_gpio, 0);
 	}
 
 	return 0;
 }
 
-static const struct drm_display_mode default_mode = {
-	.clock		= 67000,
+static const struct drm_display_mode ph720128t003_default_mode = {
+	.clock		= 70000,
+	.hdisplay	= 720,
+	.hsync_start = 720 + 120,
+	.hsync_end	= 720 + 120 + 40,
+	.htotal		= 720 + 120 + 40 + 20,
+
+	.vdisplay	= 1280,
+	.vsync_start = 1280 + 10,
+	.vsync_end	= 1280 + 10 + 2,
+	.vtotal		= 1280 + 10 + 2 + 15,
+};
+
+static const struct drm_display_mode ph720128t005_default_mode = {
+	.clock		= 68000,
 	.hdisplay	= 720,
 	.hsync_start = 720 + 120,
 	.hsync_end	= 720 + 120 + 40,
@@ -671,14 +694,14 @@ static const struct drm_display_mode default_mode = {
 static int ili9881c_get_modes(struct drm_panel *panel,
 			     struct drm_connector *connector)
 {
-	struct ili9881c_panel *tftcp = panel_to_ili9881c(panel);
-	const struct drm_display_mode *m = tftcp->desc->mode;
+	struct ili9881c_panel *ctx = panel_to_ili9881c(panel);
+	const struct drm_display_mode *m = ctx->desc->mode;
 	struct drm_display_mode *mode;
 
 	dev_dbg(panel->dev,"%s get drm_display_mode\n",__func__);
 	mode = drm_mode_duplicate(connector->dev, m);
 	if (!mode) {
-		dev_err(&tftcp->dsi->dev, "failed to add mode %ux%ux@%u\n",
+		dev_err(&ctx->dsi->dev, "failed to add mode %ux%ux@%u\n",
 			m->hdisplay, m->vdisplay, drm_mode_vrefresh(m));
 		return -ENOMEM;
 	}
@@ -688,8 +711,8 @@ static int ili9881c_get_modes(struct drm_panel *panel,
 	mode->type = DRM_MODE_TYPE_DRIVER | DRM_MODE_TYPE_PREFERRED;
 	drm_mode_probed_add(connector, mode);
 
-	connector->display_info.width_mm = tftcp->desc->width_mm;
-	connector->display_info.height_mm = tftcp->desc->height_mm;
+	connector->display_info.width_mm = ctx->desc->width_mm;
+	connector->display_info.height_mm = ctx->desc->height_mm;
 
 	return 1;
 }
@@ -704,12 +727,12 @@ static const struct drm_panel_funcs ili9881c_funcs = {
 
 static int ili9881c_dsi_probe(struct mipi_dsi_device *dsi)
 {
-	struct ili9881c_panel *tftcp;
+	struct ili9881c_panel *ctx;
 	const struct panel_desc *desc;
 	int ret;
 
-	tftcp = devm_kzalloc(&dsi->dev, sizeof(*tftcp), GFP_KERNEL);
-	if (!tftcp)
+	ctx = devm_kzalloc(&dsi->dev, sizeof(*ctx), GFP_KERNEL);
+	if (!ctx)
 		return -ENOMEM;
 
 	desc = of_device_get_match_data(&dsi->dev);
@@ -717,20 +740,32 @@ static int ili9881c_dsi_probe(struct mipi_dsi_device *dsi)
 	dsi->format = desc->format;
 	dsi->lanes = desc->lanes;
 
-	tftcp->desc = desc;
-	tftcp->dsi = dsi;
-	mipi_dsi_set_drvdata(dsi, tftcp);
+	ctx->desc = desc;
+	ctx->dsi = dsi;
+	mipi_dsi_set_drvdata(dsi, ctx);
 
-    /* The enable GPIO is optional, this pin is MIPI DSI/HDMI switch select input. */
-    tftcp->enable_gpio = devm_gpiod_get_optional(&dsi->dev, "switch", GPIOD_OUT_HIGH);
-    if (IS_ERR_OR_NULL(tftcp->enable_gpio)) {
-		dev_err(&dsi->dev, "No switch enable GPIO");
+    /* The power GPIO is MIPI VDD5V pin on the LCD adapter baord. */
+    ctx->power_gpio = devm_gpiod_get(&dsi->dev, "power", GPIOD_OUT_LOW);
+    if (IS_ERR(ctx->power_gpio)) {
+		dev_err(&dsi->dev, "failed to get mipi power gpio");
+		return PTR_ERR(ctx->power_gpio);
     } else {
-		gpiod_set_value_cansleep(tftcp->enable_gpio, 1);
+		gpiod_set_value_cansleep(ctx->power_gpio, 0);
+		msleep(50);
+		gpiod_set_value_cansleep(ctx->power_gpio, 1);
+		msleep(400);
     }
 
-	tftcp->reset_gpio = devm_gpiod_get_optional(&dsi->dev, "reset", GPIOD_OUT_HIGH);
-	if (IS_ERR(tftcp->reset_gpio))
+    /* The enable GPIO is optional, this pin is MIPI DSI/HDMI switch select input. */
+    ctx->enable_gpio = devm_gpiod_get_optional(&dsi->dev, "switch", GPIOD_OUT_HIGH);
+    if (IS_ERR_OR_NULL(ctx->enable_gpio)) {
+		dev_err(&dsi->dev, "No switch enable GPIO");
+    } else {
+		gpiod_set_value_cansleep(ctx->enable_gpio, 1);
+    }
+
+	ctx->reset_gpio = devm_gpiod_get_optional(&dsi->dev, "reset", GPIOD_OUT_HIGH);
+	if (IS_ERR(ctx->reset_gpio))
 		dev_dbg(&dsi->dev, "Couldn't get our reset GPIO\n");
 
 	ret = of_property_read_u32(dsi->dev.of_node, "dsi-lanes", &dsi->lanes);
@@ -739,48 +774,51 @@ static int ili9881c_dsi_probe(struct mipi_dsi_device *dsi)
 		dsi->lanes = 2;
 	}
 
-	drm_panel_init(&tftcp->panel, &dsi->dev, &ili9881c_funcs,
+	drm_panel_init(&ctx->panel, &dsi->dev, &ili9881c_funcs,
 		       DRM_MODE_CONNECTOR_DSI);
 
-	ret = drm_panel_of_backlight(&tftcp->panel);
+	ret = drm_panel_of_backlight(&ctx->panel);
 	if (ret) {
 		dev_err(&dsi->dev, "Failed to get backlight handle\n");
 		return ret;
 	}
 
-	drm_panel_add(&tftcp->panel);
+	drm_panel_add(&ctx->panel);
 
 	ret = mipi_dsi_attach(dsi);
 	if (ret < 0)
-		drm_panel_remove(&tftcp->panel);
+		drm_panel_remove(&ctx->panel);
 
 	return ret;
 }
 
 static int ili9881c_dsi_remove(struct mipi_dsi_device *dsi)
 {
-	struct ili9881c_panel *tftcp = mipi_dsi_get_drvdata(dsi);
+	struct ili9881c_panel *ctx = mipi_dsi_get_drvdata(dsi);
 
-	ili9881c_disable(&tftcp->panel);
+	ili9881c_disable(&ctx->panel);
 	mipi_dsi_detach(dsi);
 
-	if (tftcp->panel.dev)
-		drm_panel_remove(&tftcp->panel);
+	if (ctx->panel.dev)
+		drm_panel_remove(&ctx->panel);
 
 	return 0;
 }
 
 static void ili9881c_dsi_shutdown(struct mipi_dsi_device *dsi)
 {
-	struct ili9881c_panel *tftcp = mipi_dsi_get_drvdata(dsi);
+	struct ili9881c_panel *ctx = mipi_dsi_get_drvdata(dsi);
 
-	ili9881c_disable(&tftcp->panel);
-	ili9881c_unprepare(&tftcp->panel);
+	ili9881c_disable(&ctx->panel);
+	ili9881c_unprepare(&ctx->panel);
+	if (ctx->power_gpio) {
+		gpiod_set_value_cansleep(ctx->power_gpio, 0);
+	}
 }
 
 
 static const struct panel_desc ili9881c_t003_panel_desc = {
-	.mode = &default_mode,
+	.mode = &ph720128t003_default_mode,
 	.width_mm = 153,
 	.height_mm = 90,
 	.mode_flags = MIPI_DSI_MODE_VIDEO | MIPI_DSI_MODE_VIDEO_SYNC_PULSE |
@@ -792,7 +830,7 @@ static const struct panel_desc ili9881c_t003_panel_desc = {
 };
 
 static const struct panel_desc ili9881c_t005_panel_desc = {
-	.mode = &default_mode,
+	.mode = &ph720128t005_default_mode,
 	.width_mm = 155,
 	.height_mm = 87,
 	.mode_flags = MIPI_DSI_MODE_VIDEO | MIPI_DSI_MODE_VIDEO_SYNC_PULSE |

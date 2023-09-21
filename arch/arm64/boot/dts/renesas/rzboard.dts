@@ -269,7 +269,6 @@
 
 	backlight: backlight {
 		compatible = "pwm-backlight";
-		enable-gpios = <&pinctrl RZG2L_GPIO(43, 3) GPIO_ACTIVE_HIGH>;
 		pwms = <&gpt5 0 40000 0>;
 		brightness-levels = <0 8 32 64 96 128 160 192 224 255>;
 		default-brightness-level = <8>;
@@ -644,6 +643,7 @@
 	mipi_panel: panel@0 {
 		compatible = "ilitek,ph720128t005";
 		reg = <0>;
+		power-gpios = <&pinctrl RZG2L_GPIO(43, 3) GPIO_ACTIVE_HIGH>;
 		switch-gpios = <&pinctrl RZG2L_GPIO(43, 0) GPIO_ACTIVE_HIGH>;
 		backlight = <&backlight>;
 		status = "disabled";
