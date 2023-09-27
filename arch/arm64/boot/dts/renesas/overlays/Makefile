@@ -5,6 +5,7 @@ DTC_FLAGS += -@
 
 dtb-y += rzboard-hdmi.dtbo
 dtb-y += rzboard-ov5640.dtbo
+dtb-y += rzboard-imx219.dtbo
 dtb-y += rzboard-cm33.dtbo
 dtb-y += rzboard-can.dtbo
 dtb-y += rzboard-adc.dtbo

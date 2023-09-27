@@ -29,18 +29,24 @@
 			csi2_in: endpoint {
 				clock-lanes = <0>;
 				data-lanes = <1 2>;
-				remote-endpoint = <&ov5640_to_csi>;
+				remote-endpoint = <&imx219_to_csi>;
+				clock-noncontinuous;
+				link-frequencies =
+				/bits/ 64 <456000000>;
 			};
 		};
 	};
 };
 
-&ov5640 {
+&imx219 {
 	status = "okay";
 	port {
-		ov5640_to_csi: endpoint {
+		imx219_to_csi: endpoint {
 			clock-lanes = <0>;
 			data-lanes = <1 2>;
+			clock-noncontinuous;
+			link-frequencies =
+				/bits/ 64 <456000000>;
 			remote-endpoint = <&csi2_in>;
 		};
 	};
